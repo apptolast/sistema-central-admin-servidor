@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 
 class MarkdownChunkingTest {
 
-    private val ingester = MarkdownDocIngester(RagIngestorProperties())
+    private val ingester = MarkdownDocIngester(RagIngestorProperties(), null)
 
     @Test
     fun `chunks markdown by H2 sections`() {
@@ -50,7 +50,7 @@ class MarkdownChunkingTest {
     fun `slugify handles accents and uppercase`() {
         val md = "# Top\n## Configuración Avanzada\nbody"
         val chunks = ingester.chunkMarkdown(md, "x.md", "abc1234")
-        chunks[1].section shouldBe "configuraci-n-avanzada"
+        chunks[1].section shouldBe "configuracion-avanzada"
     }
 
     @Test

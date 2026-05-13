@@ -3,41 +3,83 @@ package com.apptolast.ragingestor.embed
 import com.apptolast.ragingestor.config.RagIngestorProperties
 import com.apptolast.ragingestor.git.DocIngester
 import org.slf4j.LoggerFactory
+import org.springframework.ai.document.Document
+import org.springframework.ai.vectorstore.VectorStore
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import java.nio.file.Files
 import java.nio.file.Paths
 
 /**
- * Chunkea markdown por secciones (## headers), computa embeddings y upserts
- * a pgvector. Cada chunk se persiste con (path, section, sha) para citation.
+ * Chunkea markdown por secciones (## headers), embeddea cada chunk con
+ * Spring AI EmbeddingModel (autoconfigurado vía OpenAI starter) y upserts
+ * a pgvector como Document(content, metadata={path,section,sha}).
  *
- * Phase 1: implementación simplificada — chunking por section + truncate a
- * `chunkTokens`. Phase 2 podemos añadir overlap inteligente.
+ * Si VectorStore no está disponible (no OPENAI_API_KEY o no DataSource),
+ * el ingester sólo chunkea y loguea — preserva la app en CI sin DB ni
+ * clave OpenAI.
  */
 @Component
 class MarkdownDocIngester(
     private val properties: RagIngestorProperties,
-    // private val embedder: EmbeddingClient,  // TODO: Spring AI EmbeddingClient
-    // private val vectorStore: VectorStore,  // TODO: pgvector adapter
+    @Autowired(required = false) private val vectorStore: VectorStore? = null,
 ) : DocIngester {
 
     private val log = LoggerFactory.getLogger(MarkdownDocIngester::class.java)
+
+    init {
+        if (vectorStore == null) {
+            log.warn(
+                "VectorStore NOT configured — embeddings disabled. " +
+                    "Set OPENAI_API_KEY + DB_URL/DB_USER/DB_PASSWORD to enable indexing.",
+            )
+        } else {
+            log.info("VectorStore configured: {}", vectorStore::class.java.simpleName)
+        }
+    }
 
     override fun ingest(relativePath: String, sha: String) {
         val absolute = Paths.get(properties.workdir, relativePath)
         if (!Files.exists(absolute)) {
             log.debug("file removed since fetch, skipping: {}", relativePath)
-            // TODO: soft-delete chunks for this path
+            // TODO soft-delete: filtrar metadata.path en pgvector y eliminar matches.
             return
         }
 
         val content = Files.readString(absolute)
         val chunks = chunkMarkdown(content, relativePath, sha)
-        log.info("ingested {} chunks from {} @ {}", chunks.size, relativePath, sha)
+        if (chunks.isEmpty()) {
+            log.debug("no chunks produced for {}", relativePath)
+            return
+        }
 
-        // TODO Phase 3:
-        //   val embeddings = embedder.embed(chunks.map(Chunk::body))
-        //   vectorStore.upsert(chunks.zip(embeddings))
+        val store = vectorStore
+        if (store == null) {
+            log.info("dry-run ingested {} chunks from {} @ {} (no VectorStore)", chunks.size, relativePath, sha)
+            return
+        }
+
+        val documents = chunks.map { chunk ->
+            Document.builder()
+                .text(chunk.body)
+                .metadata(
+                    mapOf(
+                        "path" to chunk.path,
+                        "section" to chunk.section,
+                        "sha" to chunk.sha,
+                        "model" to properties.embeddingModel,
+                    ),
+                )
+                .build()
+        }
+
+        runCatching { store.add(documents) }
+            .onSuccess {
+                log.info("indexed {} chunks from {} @ {}", documents.size, relativePath, sha)
+            }
+            .onFailure { e ->
+                log.error("failed to index {} @ {}: {}", relativePath, sha, e.message, e)
+            }
     }
 
     internal data class Chunk(
@@ -79,7 +121,9 @@ class MarkdownDocIngester(
     }
 
     private fun slugify(s: String): String =
-        s.lowercase()
+        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+            .lowercase()
             .replace(Regex("[^a-z0-9]+"), "-")
             .trim('-')
             .ifBlank { "untitled" }

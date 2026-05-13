@@ -21,14 +21,14 @@ dependencyResolutionManagement {
 include(":platform-app")
 
 // Bounded contexts — se irán activando por fase.
-// Fase 1: inventory
+// Fase 1: inventory (ACTIVO)
 // Fase 2: observability
 // Fase 3: knowledge
 // Fase 4: secrets + identity
 // Fase 5: automation
-//
-// Hasta entonces se quedan comentados para que la build siga verde:
-// include(":inventory")
+include(":inventory")
+
+// Pendientes (próximas fases):
 // include(":secrets")
 // include(":observability")
 // include(":automation")

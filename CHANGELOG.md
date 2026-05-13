@@ -7,6 +7,38 @@ Adherencia a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added — Phase 1 implementation (2026-05-13, branch `feat/marathon-2026-05-13`)
+
+- **`platform/inventory/`** — primer bounded context activo. Hexagonal completo:
+  - `api/events/InventoryEvents.kt` — `sealed interface InventoryEvent` con `PodObserved`, `ServiceObserved`, `IngressObserved`, `PvcObserved`, `CertObserved`, `ResourceDeleted`. Sin Spring, sin JPA — consumibles desde otros módulos.
+  - `domain/model/` — `Pod`, `Service`, `Ingress`, `PersistentVolumeClaim`, `Certificate`, `ResourceRef`, `ResourceKind` con invariantes en `init {}`.
+  - `application/port/` — `QueryInventoryUseCase` (inbound), `IngestResourceUseCase` (inbound), `InventoryRepository` (outbound), `InventoryEventPublisher` (outbound).
+  - `application/service/` — `InventoryQueryService`, `InventoryIngestService` con dedup por `resourceVersion` y publicación de eventos.
+  - `infrastructure/persistence/` — JPA entities con JSONB para containers/labels/ports, `JpaInventoryRepository`, `InventoryJpaMapper`.
+  - `infrastructure/web/` — `InventoryController` REST + DTOs (`PodDto`, `ServiceDto`, ...).
+  - `infrastructure/InventoryConfig.kt` — bean `SpringInventoryEventPublisher` (in-memory bus Fase 1).
+  - `db/migration/V1__inventory_init.sql` — 5 tablas con índices y UNIQUE constraints.
+  - `package-info.java` con `@ApplicationModule` para Spring Modulith.
+  - Tests: `InventoryArchitectureTest` (8 reglas ArchUnit), `PodTest`, `CertificateTest`, `InventoryIngestServiceTest`, `InventoryControllerTest` (MockMvc).
+- **`platform/platform-app/`** — `ModulithVerificationTest` re-habilitado (verifica boundaries del monolito con `:inventory` activo).
+- **`services/cluster-watcher/`** — microservicio standalone Spring Boot:
+  - `ClusterWatcherApplication.kt`, `Fabric8Config.kt`, `ClusterWatcherProperties.kt`.
+  - `PodInformer`, `ServiceInformer`, `PvcInformer` con `SharedIndexInformer` + resync 30s.
+  - `HttpEventPublisher` con `WebClient` + retry exponencial + timeout 5s.
+  - `InformerHealthIndicator` (readiness depende de apiserver alive).
+  - Test: `PvcInformerQuantityTest` (parser Quantity Ki/Mi/Gi).
+  - `settings.gradle.kts` reusa el version catalog de `platform/`.
+- **`k8s/helm/platform/`** — Chart completo: Deployment con Keel annotations, Service, ServiceAccount, IngressRoute Traefik + Certificate cert-manager + Middleware security-headers, NetworkPolicy ingress-only-from-traefik, `values.yaml` + `values-dev.yaml`.
+- **`k8s/helm/cluster-watcher/`** — Chart con Deployment + Service + RBAC `ClusterRole`/`ClusterRoleBinding` (get/list/watch sobre pods/services/ingresses/pvcs/certificates/traefik CRDs).
+- **ADR-0005** `nats-jetstream-vs-inmemory-bus.md` — decisión: in-memory bus Fase 1, NATS JetStream Fase 2. Justificación + plan de migración.
+- **ADR-0006** `otel-collector-shape.md` — decisión: VictoriaMetrics + VictoriaLogs + Grafana + OTEL Collector como gateway. Presupuesto sub-500MB RAM para single-node.
+- **CI extendido** `.github/workflows/ci.yml`:
+  - Job `modulith-verification` re-habilitado (necesita `:inventory` que ahora existe).
+  - Job `cluster-watcher-build` que reusa el wrapper de `platform/`.
+  - Job `helm-lint` con `helm lint` + `helm template` para ambos charts.
+  - Job `docker-cluster-watcher` para construir imagen del watcher.
+  - `docker-platform` ahora mirroring a Docker Hub si `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` están configurados como secrets.
+
 ### Added — Marathon prep (2026-05-13, branch `feat/marathon-2026-05-13`)
 
 - **`.claude/` v2 expansion** (commit `d36c5bf`): 3 agents nuevos (`team-lead`, `code-reviewer`, `mentor`), 4 skills (`validate-runbook`, `check-modulith-boundaries`, `rag-cite-or-die`, `phase-gate-check`), 3 rules (`ownership`, `citation-policy`, `modulith-rules`), 3 commands (`/phase-kickoff`, `/wave-status`, `/cite-or-die-check`), 2 hooks (`session-start.sh`, `stop-guard.sh`), `security-check.sh` ampliado con patrones DOCKERHUB_TOKEN + GitHub PAT, `settings.json` con SessionStart + Stop hooks.

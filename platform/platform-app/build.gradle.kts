@@ -28,7 +28,7 @@ dependencies {
 
     // Bounded context modules — se añaden via project(":<module>") cuando estén activos
     // implementation(project(":shared"))
-    // implementation(project(":inventory"))
+    implementation(project(":inventory"))
     // implementation(project(":observability"))
     // implementation(project(":knowledge"))
     // implementation(project(":secrets"))
@@ -37,6 +37,7 @@ dependencies {
 
     // Test
     testImplementation(libs.bundles.testing)
+    testRuntimeOnly("com.h2database:h2")
 }
 
 springBoot {

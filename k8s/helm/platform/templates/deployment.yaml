@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apptolast-platform.fullname" . }}
+  labels:
+    {{- include "apptolast-platform.labels" . | nindent 4 }}
+  annotations:
+    keel.sh/policy: {{ .Values.keel.policy | quote }}
+    keel.sh/trigger: {{ .Values.keel.trigger | quote }}
+    {{- if eq .Values.keel.trigger "poll" }}
+    keel.sh/pollSchedule: {{ .Values.keel.pollSchedule | quote }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "apptolast-platform.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apptolast-platform.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: {{ .Values.service.metricsPort | quote }}
+    spec:
+      serviceAccountName: {{ include "apptolast-platform.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: platform
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.springProfile | quote }}
+            - name: SERVER_PORT
+              value: {{ .Values.service.targetPort | quote }}
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -XX:InitialRAMPercentage={{ .Values.jvmOpts.initialRAMPercentage }}
+                -XX:MaxRAMPercentage={{ .Values.jvmOpts.maxRAMPercentage }}
+                -XX:+UseG1GC
+                -XX:+ExitOnOutOfMemoryError
+                -Djava.security.egd=file:/dev/./urandom
+            - name: DB_URL
+              value: "jdbc:postgresql://{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.existingSecretName }}
+                  key: user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.existingSecretName }}
+                  key: password
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.healthcheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthcheck.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthcheck.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.healthcheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthcheck.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthcheck.readiness.failureThreshold }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.startup.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.healthcheck.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.startup.periodSeconds }}
+            failureThreshold: {{ .Values.healthcheck.startup.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

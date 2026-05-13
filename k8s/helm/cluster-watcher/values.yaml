@@ -1,0 +1,66 @@
+# ============================================================================
+# Default values for apptolast-cluster-watcher.
+# ============================================================================
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/apptolast/cluster-watcher
+  tag: 0.1.0-SNAPSHOT
+  pullPolicy: IfNotPresent
+
+keel:
+  policy: minor
+  trigger: poll
+  pollSchedule: "@every 30m"
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+jvmOpts:
+  initialRAMPercentage: 50
+  maxRAMPercentage: 75
+
+# Configuración del watcher (mapeado a ClusterWatcherProperties).
+config:
+  platformBaseUrl: "http://apptolast-platform.platform:80"
+  platformIngestEndpoint: "/api/v1/internal/inventory/ingest"
+  resyncPeriodSeconds: 30
+  # Vacío = todos los namespaces. Restringe en dev a evitar ruido.
+  namespaces: []
+  dryRun: false
+
+# RBAC: get/list/watch sobre los kinds que observamos. NO create/update/delete.
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: cluster-watcher
+
+healthcheck:
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    timeoutSeconds: 5
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+service:
+  port: 80
+  targetPort: 8081
+
+tolerations: []
+nodeSelector: {}
+affinity: {}

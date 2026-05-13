@@ -1,0 +1,107 @@
+# ============================================================================
+# Default values for apptolast-platform.
+# Override por entorno con values-dev.yaml / values-prod.yaml.
+# ============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/apptolast/platform
+  tag: 0.1.0-SNAPSHOT
+  pullPolicy: IfNotPresent
+
+# Keel automatiza updates de imágenes ya desplegadas en el cluster.
+# https://keel.sh/v1/guide/documentation.html#Policies
+keel:
+  policy: minor          # solo upgrades minor (0.x.* → 0.x.{x+1})
+  trigger: poll
+  pollSchedule: "@every 30m"
+
+replicaCount: 1          # single-node cluster (ver dossier)
+
+resources:
+  requests:
+    cpu: 300m
+    memory: 768Mi
+  limits:
+    cpu: "2"
+    memory: 1536Mi
+
+# Virtual threads + heap ratio para Spring Boot 3.5 + JDK 21.
+jvmOpts:
+  initialRAMPercentage: 50
+  maxRAMPercentage: 75
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  metricsPort: 8080
+
+# Probes — ver application.yml `management.endpoint.health.probes.enabled: true`
+healthcheck:
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 5
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  startup:
+    path: /actuator/health
+    initialDelaySeconds: 30
+    periodSeconds: 5
+    failureThreshold: 60   # hasta 5min para arrancar
+
+ingress:
+  enabled: true
+  host: idp.apptolast.com
+  certIssuer: cloudflare-clusterissuer
+  middlewareSecurityHeaders: idp-security-headers
+
+postgres:
+  # Externo — no se crea PVC ni statefulset desde este chart.
+  # Inyectado via Secret `platform-postgres-credentials` (claves: url, user, password).
+  host: postgresql-platform
+  port: 5432
+  database: apptolast_platform
+  existingSecretName: platform-postgres-credentials
+
+# Service account con RBAC mínimo. El platform NO necesita acceso al apiserver
+# (de eso se encarga cluster-watcher). Solo necesita acceso a Secrets para
+# cargar credenciales (defaultmode 0400).
+serviceAccount:
+  create: true
+  name: platform
+
+# NetworkPolicy ingress: solo Traefik puede llegar al pod.
+networkPolicy:
+  enabled: true
+  allowedSources:
+    - namespace: traefik
+      podLabels:
+        app.kubernetes.io/name: traefik
+
+# Modulith systemName — usado en métricas y logs.
+modulithSystem: apptolast-platform
+
+# Profile activo de Spring. dev | prod.
+springProfile: prod
+
+# Logging — pattern + level overrides.
+logging:
+  level:
+    root: INFO
+    com.apptolast: INFO
+    org.springframework.modulith: INFO
+
+# Tolerations y nodeSelector vacíos por default (single node, no taints).
+tolerations: []
+nodeSelector: {}
+affinity: {}

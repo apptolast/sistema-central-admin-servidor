@@ -1,0 +1,29 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "apptolast-platform.fullname" . }}
+  labels:
+    {{- include "apptolast-platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "apptolast-platform.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    {{- range .Values.networkPolicy.allowedSources }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .namespace }}
+          {{- if .podLabels }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .podLabels | nindent 14 }}
+          {{- end }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+{{- end }}

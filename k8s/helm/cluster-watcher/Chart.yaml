@@ -1,0 +1,18 @@
+apiVersion: v2
+name: apptolast-cluster-watcher
+description: |
+  Servicio que observa el cluster K8s vía fabric8 SharedInformer y publica
+  eventos de cambio al platform (Inventory module).
+  RBAC mínimo: get/list/watch sobre Pods/Services/Ingresses/PVCs/Certificates.
+type: application
+version: 0.1.0
+appVersion: "0.1.0-SNAPSHOT"
+home: https://github.com/apptolast/sistema-central-admin-servidor
+maintainers:
+  - name: Pablo Hurtado
+    email: pablohurtadohg@gmail.com
+keywords:
+  - apptolast
+  - kubernetes
+  - watcher
+  - fabric8

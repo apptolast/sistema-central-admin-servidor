@@ -26,8 +26,27 @@ BLOCKED_PATTERNS=(
   "kubeconfig"
 )
 
+# Whitelist: rutas que coinciden con /secrets/ pero son el bounded context
+# legítimo del monolito (platform/secrets/src/**) o sus tests. NO contienen
+# secrets reales — son código Kotlin del módulo de inventario de secrets.
+ALLOWED_PATTERNS=(
+  "/platform/secrets/src/"
+  "/platform/secrets/build\.gradle"
+)
+
 for pattern in "${BLOCKED_PATTERNS[@]}"; do
   if [[ "$FILE_PATH" =~ $pattern ]]; then
+    # Comprobar whitelist antes de bloquear.
+    allowed=0
+    for allow in "${ALLOWED_PATTERNS[@]}"; do
+      if [[ "$FILE_PATH" =~ $allow ]]; then
+        allowed=1
+        break
+      fi
+    done
+    if [ $allowed -eq 1 ]; then
+      continue
+    fi
     echo "🔒 Escritura bloqueada: '$FILE_PATH' coincide con patrón sensible '$pattern'." >&2
     echo "   Si necesitas un .env de ejemplo, usa '.env.example' con valores dummy." >&2
     exit 2

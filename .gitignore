@@ -62,7 +62,8 @@ docs/_live/
 *.jks
 *.keystore
 credentials.json
-secrets/
+# Solo el directorio /secrets/ en la raíz, NO platform/secrets/ (bounded context).
+/secrets/
 local.properties
 
 # =====================================================================

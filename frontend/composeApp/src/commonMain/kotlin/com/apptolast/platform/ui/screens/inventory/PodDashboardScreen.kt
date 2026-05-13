@@ -28,21 +28,27 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.apptolast.platform.ui.data.InventoryClient
 import com.apptolast.platform.ui.data.PodDto
 import com.apptolast.platform.ui.navigation.AppNavigator
 import com.apptolast.platform.ui.navigation.Route
@@ -57,33 +63,47 @@ import com.apptolast.platform.ui.theme.AppToLastColors
  *   - Tabla virtualized (LazyColumn → react-window equivalent)
  *   - Click en pod → drawer detail (Pantalla 2)
  *
- * Phase 1: stub funcional con datos mock. Conexión real al backend cuando
- * el platform-app esté desplegado en el cluster.
+ * Connects to InventoryClient.listPods() — cae a lista vacía si el backend
+ * no responde (anti-hallucination: no inventamos pods).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PodDashboardScreen(navigator: AppNavigator) {
+fun PodDashboardScreen(
+    navigator: AppNavigator,
+    client: InventoryClient = remember { InventoryClient(baseUrl = "http://localhost:8080") },
+) {
     var searchQuery by remember { mutableStateOf("") }
     var namespaceFilter by remember { mutableStateOf<String?>(null) }
+    var pods by remember { mutableStateOf<List<PodDto>>(emptyList()) }
+    var refreshTick by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
 
-    // TODO(phase-1): conectar con InventoryClient.listPods(). Por ahora mocks.
-    val pods = remember { mockPods() }
+    LaunchedEffect(refreshTick) {
+        pods = try {
+            client.listPods()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
     val filtered = remember(pods, searchQuery, namespaceFilter) {
         pods.filter { pod ->
             (namespaceFilter == null || pod.namespace == namespaceFilter) &&
                 (searchQuery.isBlank() || pod.name.contains(searchQuery, ignoreCase = true))
         }
     }
+    val namespaces = remember(pods) { pods.map { it.namespace }.distinct().sorted() }
+    var showFilter by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Pods · ${filtered.size} de ${pods.size}") },
                 actions = {
-                    IconButton(onClick = { /* TODO: refresh */ }) {
+                    IconButton(onClick = { refreshTick++ }) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "Refrescar")
                     }
-                    IconButton(onClick = { /* TODO: open filter sheet */ }) {
+                    IconButton(onClick = { showFilter = !showFilter }) {
                         Icon(Icons.Outlined.FilterList, contentDescription = "Filtros")
                     }
                 },
@@ -103,6 +123,25 @@ fun PodDashboardScreen(navigator: AppNavigator) {
                 keyboardOptions = KeyboardOptions.Default,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (showFilter && namespaces.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = namespaceFilter == null,
+                        onClick = { namespaceFilter = null },
+                        label = { Text("Todos") },
+                    )
+                    namespaces.forEach { ns ->
+                        FilterChip(
+                            selected = namespaceFilter == ns,
+                            onClick = { namespaceFilter = if (namespaceFilter == ns) null else ns },
+                            label = { Text(ns) },
+                        )
+                    }
+                }
+            }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(filtered) { pod ->
                     PodRow(pod = pod, onClick = {
@@ -165,67 +204,3 @@ private fun PhaseBadge(phase: String) {
     )
 }
 
-private fun mockPods(): List<PodDto> = listOf(
-    PodDto(
-        namespace = "apptolast-greenhouse-admin-dev",
-        name = "greenhouse-admin-5cd99cf846-2tzz5",
-        phase = "RUNNING",
-        nodeName = "apptolastserver",
-        podIp = "10.244.198.150",
-        containers = listOf(
-            PodDto.ContainerDto("greenhouse-admin", "ghcr.io/apptolast/greenhouse-admin:latest", true, 0, "RUNNING"),
-        ),
-        restarts = 0,
-        ready = true,
-        observedAt = "2026-05-13T17:00:00Z",
-    ),
-    PodDto(
-        namespace = "apptolast-invernadero-api",
-        name = "emqx-0",
-        phase = "RUNNING",
-        nodeName = "apptolastserver",
-        podIp = "10.244.198.220",
-        containers = listOf(
-            PodDto.ContainerDto("emqx", "emqx/emqx:5.8", true, 0, "RUNNING"),
-        ),
-        restarts = 0,
-        ready = true,
-        observedAt = "2026-05-13T17:00:00Z",
-    ),
-    PodDto(
-        namespace = "apptolast-invernadero-api",
-        name = "timescaledb-0",
-        phase = "RUNNING",
-        nodeName = "apptolastserver",
-        containers = listOf(
-            PodDto.ContainerDto("timescaledb", "timescale/timescaledb:2.17.2-pg16", true, 0, "RUNNING"),
-        ),
-        restarts = 0,
-        ready = true,
-        observedAt = "2026-05-13T17:00:00Z",
-    ),
-    PodDto(
-        namespace = "n8n",
-        name = "n8n-prod-7ccbf86c8d-4xnmt",
-        phase = "RUNNING",
-        nodeName = "apptolastserver",
-        containers = listOf(
-            PodDto.ContainerDto("n8n", "docker.n8n.io/n8nio/n8n:1.122.4", true, 0, "RUNNING"),
-        ),
-        restarts = 0,
-        ready = true,
-        observedAt = "2026-05-13T17:00:00Z",
-    ),
-    PodDto(
-        namespace = "cluster-ops",
-        name = "homepage-847b4b96d7-47s4t",
-        phase = "RUNNING",
-        nodeName = "apptolastserver",
-        containers = listOf(
-            PodDto.ContainerDto("homepage", "ghcr.io/gethomepage/homepage:v1.3.1", true, 0, "RUNNING"),
-        ),
-        restarts = 0,
-        ready = true,
-        observedAt = "2026-05-13T17:00:00Z",
-    ),
-)

@@ -36,6 +36,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    # Permitir aplicar V0 (Modulith event_publication) cuando V1/V2 ya
+    # existían en schemas legacy. En instalaciones limpias V0 corre primero
+    # y este flag no afecta el orden.
+    out-of-order: true
 
   # ── Spring Modulith event registry ───────────────────────────────────────
   # Usamos `spring-modulith-events-jpa` (no JDBC variant), por lo que la

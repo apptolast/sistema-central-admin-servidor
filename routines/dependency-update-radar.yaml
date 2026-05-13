@@ -1,0 +1,230 @@
+# ============================================================================
+# Routine: dependency-update-radar
+# Source-of-truth: este archivo. Editar en claude.ai/code/routines en paralelo.
+# ============================================================================
+
+name: dependency-update-radar
+description: >
+  Cada domingo chequea releases nuevas de las dependencias críticas declaradas
+  en platform/gradle/libs.versions.toml. Abre issues con changelog summary y
+  breaking changes detectados. NO crea PRs (deja al humano decidir el bump).
+  Agrupa dependencias relacionadas (Spring stack) en un único issue. Cero
+  spam: re-comenta en lugar de re-abrir si el issue de la semana pasada
+  sigue abierto.
+
+trigger:
+  schedule:
+    cron: "53 6 * * 0"     # Domingos 06:53 UTC — fuera de :00/:30
+    timezone: UTC
+
+repositories:
+  - apptolast/sistema-central-admin-servidor
+
+environment: default
+
+connectors:
+  - github
+
+allow_unrestricted_branch_pushes: false
+
+prompt: |
+  Chequea releases nuevas de las dependencias críticas del proyecto. Cero
+  invención: las versiones actuales se leen literalmente de
+  platform/gradle/libs.versions.toml. Si una dependencia no aparece allí,
+  no la incluyas en el reporte.
+
+  Contexto obligatorio:
+  - CLAUDE.md (convenciones, ownership)
+  - platform/gradle/libs.versions.toml (única fuente de verdad de versiones)
+  - ARCHITECTURE.md §2.2 "Stack técnico" (qué depende de qué)
+  - .claude/rules/citation-policy.md §"Qué se considera afirmación factual"
+    (las versiones de software requieren cita)
+
+  Dependencias críticas a monitorear (lista canónica — leer la versión
+  PINNED desde platform/gradle/libs.versions.toml, NO desde aquí):
+
+    Stack Spring (agrupar en un único issue si dos o más bumpean):
+    - springBoot          (alias `springBoot`)
+    - springModulith      (alias `springModulith`)
+    - springCloud         (alias `springCloud`)
+    - springAi            (alias `springAi`)
+    - springDependencyMgmt(alias `springDependencyMgmt`)
+
+    Kotlin toolchain (agrupar en un único issue):
+    - kotlin              (alias `kotlin`)
+    - ksp                 (alias `ksp`, debe ser compatible con kotlin)
+
+    Infra/cloud:
+    - fabric8             (cliente Kubernetes)
+    - hetznerClient
+    - flyway
+    - postgresql          (driver JDBC)
+    - hibernate
+
+    Messaging:
+    - nats                (cliente NATS Java)
+    - grpc, grpcKotlin
+    - protobuf
+
+    Auth:
+    - keycloakAdminClient
+    - nimbusJoseJwt
+
+    Testing (agrupar en un único issue si dos o más bumpean):
+    - junit
+    - kotest
+    - mockk
+    - testcontainers
+    - archunit
+
+    Quality (agrupar en un único issue si dos o más bumpean):
+    - ktlint              (NOTA: pausado hasta que sea compatible con kotlin 2.3.x)
+    - detekt              (NOTA: pausado hasta que sea compatible con kotlin 2.3.x)
+    - spotless
+    - jacoco
+    - owaspDependencyCheck
+
+    Observabilidad:
+    - opentelemetry
+    - micrometer
+
+  Pasos:
+
+  1. Parsear platform/gradle/libs.versions.toml. Para cada alias de la lista
+     canónica, extraer el valor literal de [versions].<alias>. Si el alias
+     NO existe en el TOML: ignorarlo (probablemente fue removido en un bump
+     anterior — no es un error).
+
+  2. Para cada dependencia, obtener la última release pública estable:
+     a. Para artefactos en GitHub releases (Spring, Kotlin, fabric8, etc.):
+          gh api repos/<owner>/<repo>/releases --jq '.[] | select(.prerelease==false) | .tag_name' | head -1
+     b. Para artefactos en Maven Central exclusivamente: fetch del metadata
+        XML (`https://repo1.maven.org/maven2/<group-path>/<artifact>/maven-metadata.xml`)
+        y extraer `<latest>` o el último `<version>` no SNAPSHOT/RC/M/-beta.
+
+     Mapping owner/repo de referencia (estable):
+       springBoot         → spring-projects/spring-boot
+       springModulith     → spring-projects/spring-modulith
+       springCloud        → spring-cloud/spring-cloud-release
+       springAi           → spring-projects/spring-ai
+       kotlin             → JetBrains/kotlin
+       ksp                → google/ksp
+       fabric8            → fabric8io/kubernetes-client
+       hetznerClient      → hetznercloud/hcloud-java
+       flyway             → flyway/flyway
+       postgresql         → pgjdbc/pgjdbc
+       hibernate          → hibernate/hibernate-orm
+       nats               → nats-io/nats.java
+       grpc               → grpc/grpc-java
+       protobuf           → protocolbuffers/protobuf
+       keycloakAdminClient→ keycloak/keycloak (release de Keycloak)
+       nimbusJoseJwt      → maven-central (no GitHub release oficial regular)
+       junit              → junit-team/junit5
+       kotest             → kotest/kotest
+       mockk              → mockk/mockk
+       testcontainers     → testcontainers/testcontainers-java
+       archunit           → TNG/ArchUnit
+       ktlint             → pinterest/ktlint
+       detekt             → detekt/detekt
+       spotless           → diffplug/spotless
+       jacoco             → jacoco/jacoco
+       owaspDependencyCheck → jeremylong/DependencyCheck
+       opentelemetry      → open-telemetry/opentelemetry-java
+       micrometer         → micrometer-metrics/micrometer
+
+  3. Comparar pinned vs latest. Una dependencia "tiene update" si:
+     - latest > pinned (semver), considerando major.minor.patch.
+     - Ignorar pre-releases (rc, beta, alpha, M1, SNAPSHOT).
+
+  4. Para ktlint y detekt: SIEMPRE verificar si la nueva versión declara
+     compatibilidad con Kotlin 2.3.x. Si no la declara explícitamente en su
+     changelog, marcar como "still pending — Kotlin 2.3 compatibility not
+     announced" y NO incluir en el issue (mantener pausa documentada).
+
+  5. Agrupar findings:
+     a. Si 2+ dependencias del grupo "Stack Spring" bumpean → 1 issue agrupado.
+     b. Si 2+ del grupo "Kotlin toolchain" bumpean → 1 issue agrupado
+        (importante: kotlin y ksp deben subir juntos para no romper).
+     c. Si 2+ del grupo "Testing" bumpean → 1 issue agrupado.
+     d. Si 2+ del grupo "Quality" bumpean → 1 issue agrupado.
+     e. Resto: 1 issue por dependencia.
+
+  6. Deduplication antes de abrir:
+     gh issue list --label dependency-update --state open --json number,title,body,createdAt
+     Por cada issue existente abierto:
+       - Si el título contiene la misma dependencia y la misma versión target
+         que el finding actual: COMENTAR "still pending as of <fecha>" en lugar
+         de abrir uno nuevo.
+       - Si el título contiene la dependencia pero la versión target es
+         distinta (nueva release apareció esta semana): comentar "newer
+         version available: <X.Y.Z>" en el existente y actualizar el body si
+         tienes permiso, NO abrir uno nuevo.
+       - Si no existe issue para esa dependencia/grupo: continuar a paso 7.
+
+  7. Plantilla del issue:
+     Título: "deps: bump <dependencia-o-grupo> to <versión-target>"
+       Ejemplos:
+         "deps: bump springBoot 3.5.4 → 3.6.0"
+         "deps: bump Spring stack (springBoot, springModulith, springCloud)"
+         "deps: bump Kotlin toolchain (kotlin, ksp)"
+     Labels: dependency-update, automated
+     Body:
+       ## Resumen
+       <N> dependencia(s) tienen nueva release estable.
+
+       ## Cambios propuestos
+       | Dependencia | Versión actual | Versión propuesta | Tipo |
+       |-------------|----------------|-------------------|------|
+       | springBoot  | 3.5.4          | 3.6.0             | minor|
+       | ...         | ...            | ...               | ...  |
+
+       Versiones actuales citadas literalmente de:
+       `[source: platform/gradle/libs.versions.toml@HEAD]`
+
+       ## Changelog summary
+       ### <dependencia>
+       <pegar primeras 10-20 líneas del release notes con link a la fuente>
+       Fuente: <URL del release en GitHub o Maven Central>
+
+       ## Breaking changes detectados
+       <listar literales del release notes — si "BREAKING" aparece en el
+       changelog, copiar contexto. Si no aparece: "No breaking changes
+       declarados en el changelog">
+
+       ## PR sugerido (NO se crea automáticamente)
+       Cambiar en `platform/gradle/libs.versions.toml`:
+       ```toml
+       <alias>                    = "<nueva-versión>"
+       ```
+       Verificar tras el bump:
+       - [ ] `./gradlew check --no-daemon` pasa
+       - [ ] Tests de ArchUnit/Modulith verdes (cuando estén reactivados)
+       - [ ] No hay deprecations nuevas en compile output
+       - [ ] Revisar breaking changes uno a uno
+
+       ## Política
+       Las versiones de software requieren cita según
+       `.claude/rules/citation-policy.md §"Qué se considera afirmación factual"`.
+
+       ---
+       🤖 Automated issue from routine `dependency-update-radar`. Ver fuente en
+       routines/dependency-update-radar.yaml.
+
+  8. Output: lista de URLs de issues abiertos (o comentados) en STDOUT.
+     Si no había ningún update: silencio total, exit 0.
+
+  REGLAS ESTRICTAS:
+  - NO crear PRs. NO modificar libs.versions.toml. Sólo abrir issues.
+  - NO incluir pre-releases (RC, M, beta, alpha) — sólo GA estables.
+  - NO duplicar issues: deduplication estricta por dependencia/grupo.
+  - Cero invención de versiones: si no puedes resolver la latest release de
+    una dependencia (network error, repo no accesible), OMITIRLA del reporte
+    sin error visible — no inventes una versión.
+  - Citas obligatorias para las versiones actuales (siempre el path al
+    libs.versions.toml @HEAD).
+  - Si ktlint/detekt aparecen en el reporte sin declaración explícita de
+    Kotlin 2.3 compat: removerlos antes de abrir el issue.
+
+  Output esperado:
+  - 0 issues si no hay updates (silencio).
+  - 1..N issues con label dependency-update, agrupados según paso 5.

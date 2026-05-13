@@ -1,0 +1,112 @@
+# ============================================================================
+# Inventario de instancias DB que requieren CronJob pg_dump / mysqldump.
+# ============================================================================
+# Source: dossier 2026-05-12 §"Bases de datos en cluster".
+#
+# Esto NO es un manifest aplicable — es el catálogo que el operador usa para
+# instanciar cronjob-pgdump-template.yaml una vez por DB. Mysql `gibbon` usa
+# template separado (mysqldump-template.yaml — pendiente Fase 6).
+#
+# Cobertura objetivo Fase 6 (release `feat/marathon-2026-05-13` plan §F):
+#   - 7 Postgres + 1 TimescaleDB + 1 MySQL → 9 CronJobs.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# 1. TimescaleDB (apptolast-invernadero-api)
+# ---------------------------------------------------------------------------
+# INSTANCE:  timescaledb-invernaderos
+# NAMESPACE: apptolast-invernadero-api
+# DB_HOST:   timescaledb.apptolast-invernadero-api.svc.cluster.local
+# DB_NAME:   invernaderos
+# DB_USER:   pgdump
+# CRITICAL:  añadir --extension timescaledb al pg_dump si quieres restore directo
+#            (alternativa: usar pg_dumpall + WAL archiving — ver runbook
+#             TIMESCALEDB_MAINTENANCE_REVIEW_2026-05-05.md)
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 2. PostgreSQL metadata (apptolast-invernadero-api)
+# ---------------------------------------------------------------------------
+# INSTANCE:  postgres-metadata-invernadero
+# NAMESPACE: apptolast-invernadero-api
+# DB_HOST:   postgresql-metadata.apptolast-invernadero-api.svc.cluster.local
+# DB_NAME:   metadata
+# DB_USER:   pgdump
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 3. PostgreSQL Inemsellar
+# ---------------------------------------------------------------------------
+# INSTANCE:  postgres-inemsellar
+# NAMESPACE: apptolast-inemsellar
+# DB_HOST:   postgres.apptolast-inemsellar.svc.cluster.local
+# DB_NAME:   inemsellar
+# DB_USER:   pgdump
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 4. PostgreSQL Menus Dev
+# ---------------------------------------------------------------------------
+# INSTANCE:  postgres-menus-dev
+# NAMESPACE: apptolast-menus-dev
+# DB_HOST:   postgres.apptolast-menus-dev.svc.cluster.local
+# DB_NAME:   menus
+# DB_USER:   pgdump
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 5. PostgreSQL Whoop David API
+# ---------------------------------------------------------------------------
+# INSTANCE:  postgres-whoop-david
+# NAMESPACE: apptolast-whoop-david-api
+# DB_HOST:   postgresql.apptolast-whoop-david-api.svc.cluster.local
+# DB_NAME:   whoop
+# DB_USER:   pgdump
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 6. PostgreSQL n8n metadata
+# ---------------------------------------------------------------------------
+# INSTANCE:  postgres-n8n
+# NAMESPACE: n8n
+# DB_HOST:   postgres.n8n.svc.cluster.local
+# DB_NAME:   n8n
+# DB_USER:   pgdump
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 7. PostgreSQL vector (knowledge — pgvector)
+# ---------------------------------------------------------------------------
+# INSTANCE:  postgres-vector
+# NAMESPACE: n8n
+# DB_HOST:   postgres-vector.n8n.svc.cluster.local
+# DB_NAME:   rag
+# DB_USER:   pgdump
+# NOTE:      contiene embeddings de runbooks/docs — pg_dump correcto re-importa
+#            tabla vector_store, pero hay que verificar que pgvector extension
+#            esté instalada en destino antes de restore.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 8. MySQL gibbon (apptolast-gibbon — alumnos)
+# ---------------------------------------------------------------------------
+# INSTANCE:  mysql-gibbon
+# NAMESPACE: apptolast-gibbon
+# DB_HOST:   mysql.apptolast-gibbon.svc.cluster.local
+# DB_NAME:   gibbon
+# DB_USER:   pgdump        # usar usuario `backup` con SELECT,LOCK TABLES,SHOW VIEW
+# TEMPLATE:  cronjob-mysqldump-template.yaml (Fase 6 — pendiente)
+# ---------------------------------------------------------------------------
+
+# ============================================================================
+# Procedimiento para añadir una nueva instancia
+# ============================================================================
+#  1. cp cronjob-pgdump-template.yaml cronjob-pgdump-<instance>.yaml
+#  2. sed -i 's/<INSTANCE>/<instance>/g; s/<NAMESPACE>/<ns>/g; ...'
+#  3. kubectl -n <ns> create secret generic pgdump-<instance>-credentials \
+#       --from-literal=password=$(passbolt get pgdump-<instance>)
+#  4. kubectl apply -f cronjob-pgdump-<instance>.yaml --dry-run=server
+#  5. kubectl apply -f cronjob-pgdump-<instance>.yaml
+#  6. kubectl -n <ns> create job --from=cronjob/pgdump-<instance> test-$(date +%s)
+#  7. Verificar dump en Storage Box: aws s3 ls s3://longhorn-backup-apptolast/pgdump/<instance>/
+# ============================================================================

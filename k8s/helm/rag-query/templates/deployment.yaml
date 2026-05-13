@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rag-query.fullname" . }}
+  labels:
+    {{- include "rag-query.labels" . | nindent 4 }}
+  annotations:
+    keel.sh/policy: {{ .Values.keel.policy | quote }}
+    keel.sh/trigger: {{ .Values.keel.trigger | quote }}
+    {{- if eq .Values.keel.trigger "poll" }}
+    keel.sh/pollSchedule: {{ .Values.keel.pollSchedule | quote }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "rag-query.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rag-query.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: {{ .Values.service.targetPort | quote }}
+    spec:
+      serviceAccountName: {{ include "rag-query.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rag-query
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: {{ .Values.service.targetPort | quote }}
+            - name: RAG_QUERY_DB_URL
+              value: {{ .Values.database.url | quote }}
+            - name: RAG_QUERY_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.userSecret.name }}
+                  key: {{ .Values.database.userSecret.userKey }}
+            - name: RAG_QUERY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.userSecret.name }}
+                  key: {{ .Values.database.userSecret.passwordKey }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.openai.apiKeySecret.name }}
+                  key: {{ .Values.openai.apiKeySecret.key }}
+            - name: RAG_QUERY_TOP_K
+              value: {{ .Values.config.topK | quote }}
+            - name: RAG_QUERY_MIN_SCORE
+              value: {{ .Values.config.minScore | quote }}
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -XX:InitialRAMPercentage={{ .Values.jvmOpts.initialRAMPercentage }}
+                -XX:MaxRAMPercentage={{ .Values.jvmOpts.maxRAMPercentage }}
+                -XX:+UseG1GC
+                -XX:+ExitOnOutOfMemoryError
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.healthcheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthcheck.liveness.timeoutSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.healthcheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthcheck.readiness.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rag-query.fullname" . }}
+  labels:
+    {{- include "rag-query.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "rag-query.selectorLabels" . | nindent 4 }}
+---
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "rag-query.serviceAccountName" . }}
+  labels:
+    {{- include "rag-query.labels" . | nindent 4 }}
+{{- end }}

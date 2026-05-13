@@ -1,0 +1,112 @@
+# ============================================================================
+# Template CronJob pg_dump → Hetzner Storage Box (S3 via aws-cli).
+# ============================================================================
+# Cada instancia (TimescaleDB, postgres-metadata, postgres-whoop, etc.) instancia
+# este template con su namespace/host/db/secret correspondiente.
+#
+# Source: dolor P0-3 dossier — sin pg_dump cross-DB para 7 PG + 1 MySQL.
+# Producto: dumps semanales en Storage Box, 4 semanas retención, restauración
+#           probada con `pg_restore --list <dump>` antes de aplicar.
+#
+# Cómo usar:
+#   1. Copiar este archivo a cronjob-pgdump-<instance>.yaml.
+#   2. Renombrar `<INSTANCE>`, `<NAMESPACE>`, `<DB_HOST>`, `<DB_NAME>`, `<DB_USER>`.
+#   3. Crear Secret `pgdump-<instance>-credentials` con password.
+#   4. Aplicar y monitorizar primera ejecución.
+# ============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pgdump-<INSTANCE>
+  namespace: <NAMESPACE>
+  labels:
+    apptolast.com/hardening: "true"
+    apptolast.com/job-type: "pgdump"
+    apptolast.com/instance: "<INSTANCE>"
+spec:
+  schedule: "0 1 * * *"        # 01:00 UTC diario
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 604800     # 7 días
+      template:
+        metadata:
+          labels:
+            apptolast.com/job-type: "pgdump"
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pgdump
+              image: postgres:16-alpine
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "-euc"]
+              args:
+                - |
+                  set -o pipefail
+                  TS=$(date -u +%Y%m%dT%H%M%SZ)
+                  DUMP_FILE="/tmp/${INSTANCE}-${TS}.sql.gz"
+                  echo "[pgdump] starting ${INSTANCE} @ ${TS}"
+                  PGPASSWORD="$PGPASSWORD" pg_dump \
+                    -h "$DB_HOST" \
+                    -U "$DB_USER" \
+                    -d "$DB_NAME" \
+                    --format=custom \
+                    --no-owner \
+                    --no-privileges \
+                    | gzip -9 > "$DUMP_FILE"
+                  SIZE=$(stat -c%s "$DUMP_FILE")
+                  echo "[pgdump] done ${INSTANCE} size=${SIZE}B"
+                  # Upload to S3-compatible Storage Box.
+                  apk add --no-cache aws-cli
+                  aws s3 cp "$DUMP_FILE" \
+                    "s3://${S3_BUCKET}/pgdump/${INSTANCE}/${INSTANCE}-${TS}.sql.gz" \
+                    --endpoint-url="$S3_ENDPOINT"
+                  echo "[pgdump] uploaded s3://${S3_BUCKET}/pgdump/${INSTANCE}/"
+              env:
+                - name: INSTANCE
+                  value: "<INSTANCE>"
+                - name: DB_HOST
+                  value: "<DB_HOST>"
+                - name: DB_NAME
+                  value: "<DB_NAME>"
+                - name: DB_USER
+                  value: "<DB_USER>"
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: pgdump-<INSTANCE>-credentials
+                      key: password
+                - name: S3_BUCKET
+                  value: "longhorn-backup-apptolast"
+                - name: S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: longhorn-backup-credential
+                      key: AWS_ENDPOINTS
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: longhorn-backup-credential
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: longhorn-backup-credential
+                      key: AWS_SECRET_ACCESS_KEY
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 999
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]

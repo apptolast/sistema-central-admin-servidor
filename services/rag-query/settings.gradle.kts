@@ -1,0 +1,15 @@
+rootProject.name = "rag-query"
+
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven("https://repo.spring.io/milestone")
+    }
+}

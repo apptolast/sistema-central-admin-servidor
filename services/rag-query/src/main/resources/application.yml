@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: rag-query
+  main:
+    banner-mode: off
+  datasource:
+    url: ${RAG_QUERY_DB_URL:jdbc:postgresql://postgres-vector.n8n.svc.cluster.local:5432/rag}
+    username: ${RAG_QUERY_DB_USER:rag}
+    password: ${RAG_QUERY_DB_PASSWORD:}
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+        dimensions: 1536
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        schema-name: public
+        table-name: vector_store
+
+server:
+  port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: rag-query
+
+rag:
+  query:
+    top-k: 5
+    min-score: 0.60
+    embeddings-model: text-embedding-3-small
+    embedding-dimension: 1536
+
+logging:
+  level:
+    com.apptolast.ragquery: INFO
+    org.springframework.ai: WARN

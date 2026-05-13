@@ -33,7 +33,7 @@ dependencies {
     implementation(project(":knowledge"))
     implementation(project(":secrets"))
     implementation(project(":automation"))
-    // implementation(project(":identity"))
+    implementation(project(":identity"))
 
     // Test
     testImplementation(libs.bundles.testing)

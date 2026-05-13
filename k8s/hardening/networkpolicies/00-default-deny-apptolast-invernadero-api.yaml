@@ -1,0 +1,29 @@
+# ============================================================================
+# Default-deny ingress en namespace apptolast-invernadero-api.
+# ============================================================================
+# Por defecto, nada entra a ningún pod del namespace. Hay que añadir reglas
+# allow explícitas (ver 01-allow-app-to-db.yaml) para los flujos legítimos.
+#
+# Source: cluster-ops/audit/NODEPORT_EXPOSURE_AUDIT_2026-05-05.md
+# Cubre: timescaledb-external, postgresql-metadata-external, redis-external,
+#        emqx-external (8 NodePorts en este namespace).
+#
+# PRE-APLICACIÓN OBLIGATORIA:
+#   1. `kubectl get pods -n apptolast-invernadero-api -o wide` para mapear pods.
+#   2. Verificar que los clientes externos legítimos (devices IoT, n8n, etc.)
+#      están listados en 01-allow-app-to-db.yaml. Si no → tráfico se cae.
+#   3. Aplicar con --dry-run=server primero.
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: apptolast-invernadero-api
+  labels:
+    apptolast.com/hardening: "true"
+    apptolast.com/source: "nodeport-audit-2026-05-05"
+spec:
+  podSelector: {}     # selecciona TODOS los pods del namespace
+  policyTypes:
+    - Ingress
+  # Sin `ingress:` → deny all.

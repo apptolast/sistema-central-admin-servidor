@@ -31,7 +31,7 @@ include(":observability")
 include(":knowledge")
 include(":secrets")
 include(":automation")
+include(":identity")
 
 // Pendientes (próximas fases):
-// include(":identity")
 // include(":shared")

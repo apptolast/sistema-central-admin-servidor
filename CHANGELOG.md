@@ -7,6 +7,22 @@ Adherencia a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Fixed — Post-merge stabilization 2026-05-13 (CI verde + close pending TODOs)
+
+- **CI schema validation** (PR #2, 3434864) — `secrets.*` no es accesible en step `if:` (limitación de GitHub Actions). Workflow estaba marcando 18 runs consecutivos como Failure con 0 jobs ejecutados desde commit ec2b807 (mucho antes del marathon). Fix: job-level `env: { DH_USER, DH_TOKEN }` con `secrets.X`, y step `if: env.DH_USER != ''`. Confirmado con `actionlint`.
+- **docker-frontend job build** (PR #3) — `gradle :composeApp:wasmJsBrowserDistribution` dentro del Dockerfile fallaba con exit 127 en `kotlinWasmToolingSetup` (la imagen eclipse-temurin:21-jdk no tiene Node/curl). Refactor: el job `frontend-build` ya produce el artifact `frontend-dist`; docker-frontend ahora hace `actions/download-artifact@v4` y el Dockerfile es nginx-only (~10x más rápido).
+- **CI tags pattern** (PR #3) — el patrón `${{ ... && 'latest' || '' }}` producía línea vacía rompiendo `docker/build-push-action`. Refactor a step previo "Compute tag list" con heredoc → multi-line steps output, deterministic.
+- **PodDashboardScreen wired** (PR #3) — antes lista hardcoded `mockPods()` con 5 pods inventados. Ahora `LaunchedEffect(refreshTick) → InventoryClient.listPods()` con try/catch defensivo → emptyList en fallo. Refresh button funciona. Filter button abre fila de FilterChips con namespaces distintos del backend.
+- **RagQueryScreen wired** (PR #4) — nuevo `RagClient` data class llama POST /api/v1/rag/query al microservicio rag-query. `RagAnswer` sealed (Cited|NoEvidence). Anti-hallucination: cualquier error → NoEvidence con mensaje canónico. Citation chips renderizadas en FlowRow para wrap.
+- **rag-ingestor soft-delete** (PR #4) — TODO de Phase 3 cerrado. Cuando git pull detecta `.md` eliminado, `softDeleteChunks(path)` usa Spring AI `FilterExpressionBuilder.eq("path", relativePath)` para borrar chunks del pgvector. runCatching wrap para que un fallo NO tumbe la siguiente iteración.
+
+**Estado post-fix:**
+- CI run #20 main: **SUCCESS** (13/13 jobs green tras PR #3).
+- TODOs reales restantes en código: 3 (todos legítimos waits-for-other-work):
+  - `LoginScreen.kt`: Phase 4 D4 OIDC redirect (necesita Keycloak vivo)
+  - `PassboltApiClient.kt`: Wave-D D4 (necesita Passbolt API contract)
+  - `platform/build.gradle.kts`: Phase 1 re-habilitar ktlint cuando publiquen Kotlin 2.3-compatible
+
 ### Added — Marathon mega-session 2026-05-13 (cierre Phase 3 + Phase 5, scaffold Phase 4, P0 Phase 6, CI/CD para 5 imágenes)
 
 - **Wave-C C4** (c1aa386) — PodDetailScreen frontend wired al endpoint real

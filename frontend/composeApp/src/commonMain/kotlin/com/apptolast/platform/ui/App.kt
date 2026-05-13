@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import com.apptolast.platform.ui.components.AppNavigationRail
 import com.apptolast.platform.ui.navigation.Route
 import com.apptolast.platform.ui.navigation.rememberAppNavigator
+import com.apptolast.platform.ui.screens.automation.AuditLogScreen
 import com.apptolast.platform.ui.screens.cronjobs.CronjobBoardScreen
 import com.apptolast.platform.ui.screens.inventory.PodDashboardScreen
 import com.apptolast.platform.ui.screens.inventory.PodDetailScreen
@@ -27,7 +28,8 @@ fun App() {
                 is Route.PodDetail -> PodDetailScreen(current, navigator)
                 Route.RunbookViewer -> RunbookViewerScreen()
                 Route.RagQuery -> RagQueryScreen()
-                Route.CronjobBoard -> CronjobBoardScreen()
+                Route.CronjobBoard -> CronjobBoardScreen(navigator)
+                Route.AuditLog -> AuditLogScreen()
                 Route.Login -> LoginScreen()
             }
         }

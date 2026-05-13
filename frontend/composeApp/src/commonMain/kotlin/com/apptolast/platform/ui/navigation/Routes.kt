@@ -13,5 +13,6 @@ sealed class Route(val path: String, val title: String) {
     data object RunbookViewer : Route("/runbooks", "Runbooks")
     data object RagQuery : Route("/ask", "Pregunta a la plataforma")
     data object CronjobBoard : Route("/cronjobs", "Cronjobs")
+    data object AuditLog : Route("/automation/audit", "Audit log")
     data object Login : Route("/login", "Iniciar sesión")
 }

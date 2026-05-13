@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.QuestionAnswer
 import androidx.compose.material.icons.outlined.Schedule
@@ -33,6 +34,7 @@ private val items = listOf(
     RailItem(Route.RunbookViewer, "Runbooks", Icons.Outlined.MenuBook),
     RailItem(Route.RagQuery, "Ask", Icons.Outlined.QuestionAnswer),
     RailItem(Route.CronjobBoard, "Cronjobs", Icons.Outlined.Schedule),
+    RailItem(Route.AuditLog, "Audit", Icons.Outlined.History),
     RailItem(Route.Login, "Cuenta", Icons.Outlined.Person),
 )
 

@@ -11,7 +11,7 @@ ktor                      = "3.4.1"
 ksp                       = "2.3.21-1.0.21"
 springBoot                = "3.5.4"
 springDependencyMgmt      = "1.1.7"
-springModulith            = "2.0.1"
+springModulith            = "1.4.11"
 springCloud               = "2024.0.0"
 springAi                  = "1.1.0"
 

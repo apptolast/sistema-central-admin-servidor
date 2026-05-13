@@ -17,6 +17,19 @@ plugins {
     alias(libs.plugins.springDependencyMgmt)
 }
 
+// Mismo pin que knowledge/build.gradle.kts (commit fab4acc). Necesario aquí
+// porque InventoryKnowledgeFlowE2ETest usa RestClient.builder() de spring-web
+// 6.2.x; sin el force, spring-modulith 2.0.1 arrastra spring-core 7.0.2 y
+// explota con NoClassDefFoundError: MimeType$SpecificityComparator.
+// Quitar cuando migremos a Spring Boot 4.0.x (Fase 6 hardening + Java 25).
+configurations.all {
+    resolutionStrategy {
+        force("org.springframework:spring-core:6.2.9")
+        force("org.springframework:spring-test:6.2.9")
+        force("org.springframework:spring-web:6.2.9")
+    }
+}
+
 dependencies {
     implementation(libs.bundles.spring.base)
     implementation(libs.bundles.spring.web)

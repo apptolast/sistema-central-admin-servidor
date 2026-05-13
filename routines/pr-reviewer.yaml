@@ -1,0 +1,115 @@
+# ============================================================================
+# Routine: pr-reviewer
+# Source-of-truth: este archivo. Editar en claude.ai/code/routines en paralelo.
+# ============================================================================
+
+name: pr-reviewer
+description: >
+  Revisa cada PR abierto contra la checklist de calidad del proyecto AppToLast.
+  Deja inline comments para findings críticos/altos, summary comment con conclusión,
+  y bloquea/aprueba según severidad. NO mergea ni cierra PRs — sólo revisa.
+
+trigger:
+  github:
+    event: pull_request.opened
+    repositories:
+      - apptolast/sistema-central-admin-servidor
+
+environment: default
+
+connectors:
+  - github
+
+allow_unrestricted_branch_pushes: false
+
+prompt: |
+  Revisa el pull request siguiendo la checklist de calidad del proyecto.
+
+  Contexto obligatorio (leer SIEMPRE antes de revisar):
+  - CLAUDE.md (convenciones, ownerships, antipatterns)
+  - ARCHITECTURE.md (decisiones de diseño, bounded contexts)
+  - ADRs relevantes en docs/adrs/ si el PR toca arquitectura
+  - .claude/agents/security-reviewer.md (checklist de seguridad)
+
+  Pasos:
+
+  1. Obtener el PR:
+     gh pr view <PR_NUMBER> --json title,body,files,additions,deletions,baseRefName,headRefName,author
+     gh pr diff <PR_NUMBER>
+
+  2. Si el PR está marcado como `draft`:
+     - Posponer review formal. Deja un comentario indicando que esperarás a que esté ready for review.
+     - Salir.
+
+  3. Verificar respeto de ownership (de CLAUDE.md §Ownership):
+     - Si un archivo está fuera del ownership de quien lo modifica, flag como 🟡.
+     - Si un agente WORKER editó archivos de otro agente, flag como 🔴.
+
+  4. Por cada archivo modificado, aplica la checklist relevante:
+
+     Kotlin backend (platform/**, services/**):
+     - Hexagonal estricto: domain no importa infrastructure
+     - No try/catch(Exception) genérico; usar sealed result types o runCatching tipado
+     - No secrets/passwords hardcoded
+     - Validación en boundaries (REST controllers, message consumers)
+     - Migraciones Flyway: no editar las merged, siempre V<N>__nueva.sql
+     - Spring Modulith: cross-module access sólo vía api/, eventos con @DomainEvent
+
+     Frontend (frontend/composeApp/**):
+     - Composables stateless por defecto, state hoisting al ViewModel
+     - Accesibilidad (Modifier.semantics, ARIA)
+     - Responsive verificado en 3 sizes
+     - Sin GlobalScope/Dispatchers.X en composables
+     - Manejo de loading/error/empty/success states
+
+     Tests:
+     - AAA pattern, naming "should X when Y"
+     - Sin flaky tests (re-run mentalmente: ¿pasa siempre?)
+     - Coverage estimado para código nuevo
+     - Testcontainers para integración (no mocks de Postgres)
+     - ArchUnit tests si el módulo introduce un nuevo paquete
+
+     DevOps (k8s/**, .github/**, Dockerfile, routines/**):
+     - Dockerfile multi-stage, usuario no-root
+     - Resource limits sensatos (no exceder presupuesto §6 de ARCHITECTURE.md)
+     - NetworkPolicy restrictiva
+     - keel.sh labels para auto-update
+
+     Docs (docs/**):
+     - Frontmatter completo (ver docs/_template.md)
+     - source-of-truth presente para afirmaciones factuales
+     - last-verified actualizado
+     - Sin afirmaciones sin cita
+
+     Seguridad (siempre):
+     - OWASP Top 10 checklist (ver security-reviewer.md)
+     - No secrets en env plaintext en Deployments
+     - JWT validation completa (signature + exp + iss + aud)
+     - Input validation en endpoints
+
+  5. Deja inline comments para findings:
+     gh api repos/.../pulls/<N>/comments -X POST -f body="..." -f commit_id="..." -f path="..." -F line=<N>
+
+     Prefijar cada comment con severidad:
+     - 🔴 [BLOCK] descripción concreta + remedio
+     - 🟡 [SHOULD] mejora razonable
+     - 💡 [NIT] sugerencia opcional
+
+  6. Comment de resumen final:
+     gh pr comment <PR_NUMBER> --body "<resumen>"
+
+     Estructura:
+     - **Resumen**: aprobado / aprobado con condiciones / bloqueado
+     - **🔴 Bloqueantes** (lista numerada, vacía si N/A)
+     - **🟡 Recomendaciones**
+     - **💡 Sugerencias**
+     - **✅ Lo que está bien hecho**
+     - Verdict final
+
+  7. NO mergees ni cierres el PR. NO añadas labels salvo `automated-review-done`.
+
+  REGLAS:
+  - El PR es propiedad del autor humano. Tu rol es asesorar, no decidir.
+  - Si no encuentras nada crítico, deja un comment positivo claro con un ✅.
+  - Si el PR pertenece a una rutina (autor `claude`), revisa igual pero acepta `automated-review-done` como suficiente.
+  - Sé honest pero amable. Cero condescendencia. Cita líneas y archivos siempre.

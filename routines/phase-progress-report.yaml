@@ -1,0 +1,80 @@
+# ============================================================================
+# Routine: phase-progress-report
+# Source-of-truth: este archivo. Editar en claude.ai/code/routines en paralelo.
+# ============================================================================
+
+name: phase-progress-report
+description: >
+  Reporte semanal de progreso del IDP. Lee ARCHITECTURE.md para identificar la
+  fase activa, analiza commits/PRs de los últimos 7 días, calcula % de completitud
+  de la fase, y abre un PR a docs/progress/.
+
+trigger:
+  schedule:
+    cron: "0 9 * * 1"      # Lunes 09:00 UTC
+    timezone: UTC
+
+repositories:
+  - apptolast/sistema-central-admin-servidor
+
+environment: default
+
+connectors:
+  - github
+
+allow_unrestricted_branch_pushes: false  # sólo branches con prefijo claude/
+
+prompt: |
+  Genera el reporte semanal de progreso del proyecto Sistema Central de Administración del Servidor (IDP).
+
+  Contexto obligatorio:
+  - Lee CLAUDE.md (convenciones del proyecto)
+  - Lee ARCHITECTURE.md §4 (roadmap por fases) para identificar la fase activa
+  - Lee docs/_template.md (frontmatter obligatorio)
+  - Lee el último reporte en docs/progress/ (si existe) para comparar momentum
+
+  Pasos:
+
+  1. Identificar la fase activa según los commits recientes. Si todas las tareas
+     de la fase actual se completaron, propón el avance a la siguiente fase en el reporte.
+
+  2. Ejecuta:
+     git log --since="7 days ago" --pretty=format:"%h | %an | %ad | %s" --date=short
+     gh pr list --state all --limit 30 --json number,title,state,createdAt,mergedAt,author
+     gh issue list --state all --limit 30 --json number,title,state,labels,createdAt,closedAt
+
+  3. Analiza:
+     - Entregables de la fase que se completaron
+     - Entregables pendientes
+     - Velocidad: commits/PRs por día, average PR cycle time
+     - % estimado de la fase actual
+     - Bloqueadores (PRs en review > 3 días, issues P0/P1 sin asignar)
+
+  4. Escribe el reporte a docs/progress/YYYY-WW.md (ISO week number, e.g., 2026-21.md).
+     Frontmatter obligatorio:
+       title: "Progress report — week YYYY-WW"
+       type: progress
+       owner: pablo
+       last-verified: <fecha actual ISO>
+       tags: [progress, weekly]
+
+     Estructura del cuerpo:
+     - ## Resumen ejecutivo (3-5 bullets máximo)
+     - ## Fase activa y % completitud estimado
+     - ## Entregables completados esta semana (lista con links a commits/PRs)
+     - ## Entregables pendientes para próxima semana
+     - ## Bloqueadores y riesgos
+     - ## Métricas (tabla: commits, PRs abiertos/cerrados, issues abiertas/cerradas, tiempo medio review)
+     - ## Próximas decisiones que requieren input del owner
+
+  5. Abre un PR titulado "docs(progress): weekly report W<NN> YYYY".
+     - Branch: claude/progress-report-YYYY-WW
+     - Body incluye: resumen ejecutivo + link al doc completo + checklist de items que requieren acción del owner
+     - Etiquetas: progress-report, automated
+
+  REGLAS:
+  - NO modifiques ningún archivo fuera de docs/progress/.
+  - Si no hay actividad esta semana, NO inventes — indica literalmente "Sin avances esta semana".
+  - Cita commits/PRs con links GitHub: [abc1234](https://github.com/.../commit/abc1234).
+  - Si los entregables de la fase superan el 100% (terminada), propón en "Próximas decisiones" el avance a la siguiente fase.
+  - El PR debe ser auto-mergeable: ningún cambio que rompa CI.

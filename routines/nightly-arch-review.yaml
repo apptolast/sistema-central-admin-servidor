@@ -1,0 +1,101 @@
+# ============================================================================
+# Routine: nightly-arch-review
+# Source-of-truth: este archivo. Editar en claude.ai/code/routines en paralelo.
+# ============================================================================
+
+name: nightly-arch-review
+description: >
+  Verifica diariamente que las invariantes arquitectónicas siguen intactas:
+  tests verdes, boundaries Spring Modulith + ArchUnit respetadas, docs con
+  frontmatter, dependencias sin CVEs nuevos críticos. Silencio = todo OK.
+  Si hay regresión, abre issue P0/P1 con detalle exacto.
+
+trigger:
+  schedule:
+    cron: "0 2 * * *"      # Diaria 02:00 UTC
+    timezone: UTC
+
+repositories:
+  - apptolast/sistema-central-admin-servidor
+
+environment: default
+
+connectors:
+  - github
+
+allow_unrestricted_branch_pushes: false
+
+prompt: |
+  Verifica que las invariantes arquitectónicas del proyecto siguen intactas.
+  Silencio total si todo OK. Issue si hay regresión.
+
+  Contexto obligatorio:
+  - CLAUDE.md (convenciones)
+  - ARCHITECTURE.md (decisiones inmutables salvo ADR nuevo)
+  - docs/adrs/0001..0004 (boundaries vigentes)
+
+  Pasos:
+
+  1. Build completo:
+     cd platform && ./gradlew check --no-daemon
+     Si falla: build rojo → issue P0 inmediato (ver §regresiones abajo).
+
+  2. (Cuando se reactiven en Phase 1+):
+     ./gradlew :platform-app:test --tests "*Modulith*" --tests "*Architecture*" --no-daemon
+     Si falla: violación de boundaries → issue P0.
+
+  3. Verificar frontmatter en docs/:
+     find docs -name "*.md" -not -path "docs/_live/*" -not -name "_template.md" | while read f; do
+       if ! head -20 "$f" | grep -q "^---"; then
+         echo "Sin frontmatter: $f"
+       fi
+       if ! head -20 "$f" | grep -q "^last-verified:"; then
+         echo "Sin last-verified: $f"
+       fi
+     done
+     Si hay docs sin frontmatter o sin last-verified: issue P2.
+
+  4. Verificar docs con last-verified > 90 días:
+     Listar archivos cuyo last-verified está obsoleto. Issue P3 con la lista.
+
+  5. (Cuando OWASP plugin esté en CI) Verificar reporte de dependencias:
+     - CVEs CRÍTICOS nuevos vs último reporte: issue P0
+     - CVEs ALTOS nuevos: issue P1
+     - Resto: no issue
+
+  6. Si TODO OK: silencio. NO crear issue de "todo bien".
+
+  Regresiones — formato del issue:
+  - Título: "arch-review YYYY-MM-DD: <resumen 1 línea>"
+  - Labels: arch-review, priority/<P0|P1|P2|P3>
+  - Body:
+    ## Detectado el YYYY-MM-DD HH:MM UTC
+
+    ### Regresiones encontradas
+
+    1. **<tipo>**: <archivo:linea>
+       - Invariante violada: <referencia a CLAUDE.md / ADR>
+       - Evidencia: <snippet>
+       - Remedio sugerido: <pasos>
+
+    (repetir por cada finding)
+
+    ### Cómo reproducir
+    ```bash
+    cd platform && ./gradlew check
+    ```
+
+    ---
+    🤖 Generado automáticamente por la routine `nightly-arch-review`. Ver fuente en routines/nightly-arch-review.yaml.
+
+  REGLAS ESTRICTAS:
+  - NO arregles regresiones — sólo reporta.
+  - NO modifiques ningún archivo del repo.
+  - NO commitees nada.
+  - NO mergees nada.
+  - Si un test es flaky (pasa 3 de 5 reruns), repórtalo como P1 con label `flaky-test`.
+  - Severidad:
+    * P0 = build no compila / test que valida invariante crítica falla / CVE crítico
+    * P1 = test que valida invariante secundaria falla / CVE alto / flaky test
+    * P2 = doc sin frontmatter / warning de deprecación
+    * P3 = doc stale > 90d / nice-to-have

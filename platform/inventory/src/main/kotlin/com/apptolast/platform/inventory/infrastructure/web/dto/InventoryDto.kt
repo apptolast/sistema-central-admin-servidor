@@ -1,10 +1,12 @@
 package com.apptolast.platform.inventory.infrastructure.web.dto
 
+import com.apptolast.platform.inventory.application.port.inbound.PodDetail
 import com.apptolast.platform.inventory.domain.model.Certificate
 import com.apptolast.platform.inventory.domain.model.Ingress
 import com.apptolast.platform.inventory.domain.model.PersistentVolumeClaim
 import com.apptolast.platform.inventory.domain.model.Pod
 import com.apptolast.platform.inventory.domain.model.Service
+import com.apptolast.platform.knowledge.domain.model.Citation
 import java.time.Instant
 
 /** DTO REST plano — desacoplado del modelo de dominio. */
@@ -46,6 +48,41 @@ data class PodDto(
             restarts = pod.totalRestarts(),
             ready = pod.isReady(),
             observedAt = pod.observedAt,
+        )
+    }
+}
+
+/**
+ * Versión enriquecida del pod: añade [relatedRunbooks] resueltos vía Knowledge.
+ * Si Knowledge no encontró evidencia o estaba caído, la lista queda vacía
+ * (regla anti-hallucination). El frontend renderiza la sección "Runbooks
+ * relacionados" sólo si `relatedRunbooks.isNotEmpty()`.
+ */
+data class PodDetailDto(
+    val pod: PodDto,
+    val relatedRunbooks: List<RunbookRefDto>,
+) {
+    data class RunbookRefDto(
+        val sourcePath: String,
+        val section: String,
+        val sha: String,
+        /** Cita en formato canónico `[source: path#section@sha]`. */
+        val citation: String,
+    ) {
+        companion object {
+            fun from(c: Citation): RunbookRefDto = RunbookRefDto(
+                sourcePath = c.sourcePath,
+                section = c.section,
+                sha = c.sha,
+                citation = c.toMarkdown(),
+            )
+        }
+    }
+
+    companion object {
+        fun from(detail: PodDetail): PodDetailDto = PodDetailDto(
+            pod = PodDto.from(detail.pod),
+            relatedRunbooks = detail.relatedRunbooks.map(RunbookRefDto::from),
         )
     }
 }

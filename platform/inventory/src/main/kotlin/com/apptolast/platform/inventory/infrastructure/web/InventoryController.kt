@@ -10,6 +10,7 @@ import com.apptolast.platform.inventory.domain.model.ResourceKind
 import com.apptolast.platform.inventory.domain.model.ResourceRef
 import com.apptolast.platform.inventory.infrastructure.web.dto.CertificateDto
 import com.apptolast.platform.inventory.infrastructure.web.dto.IngressDto
+import com.apptolast.platform.inventory.infrastructure.web.dto.PodDetailDto
 import com.apptolast.platform.inventory.infrastructure.web.dto.PodDto
 import com.apptolast.platform.inventory.infrastructure.web.dto.PvcDto
 import com.apptolast.platform.inventory.infrastructure.web.dto.ServiceDto
@@ -40,14 +41,18 @@ class InventoryController(
     ): List<PodDto> = query.listPods(PodFilter(namespace = namespace, phase = phase))
         .map(PodDto::from)
 
+    /**
+     * Detalle de un pod, enriquecido con runbooks relevantes del knowledge module.
+     * Si knowledge está caído, devuelve igualmente el pod con `relatedRunbooks=[]`.
+     */
     @GetMapping("/pods/{namespace}/{name}")
     fun getPod(
         @PathVariable namespace: String,
         @PathVariable name: String,
-    ): ResponseEntity<PodDto> {
-        val pod = query.getPod(ResourceRef(ResourceKind.POD, namespace, name))
+    ): ResponseEntity<PodDetailDto> {
+        val detail = query.getPodDetail(ResourceRef(ResourceKind.POD, namespace, name))
             ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(PodDto.from(pod))
+        return ResponseEntity.ok(PodDetailDto.from(detail))
     }
 
     @GetMapping("/services")

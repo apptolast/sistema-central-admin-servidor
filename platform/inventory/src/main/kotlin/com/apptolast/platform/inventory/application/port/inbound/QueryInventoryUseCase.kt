@@ -17,6 +17,13 @@ interface QueryInventoryUseCase {
     fun listPods(filter: PodFilter): List<Pod>
     fun getPod(ref: ResourceRef): Pod?
 
+    /**
+     * Pod + runbooks relevantes (recuperados vía knowledge port).
+     * Devuelve null si el pod no existe. Si knowledge falla, [PodDetail.relatedRunbooks]
+     * queda vacío — la query del pod NUNCA falla por problemas en knowledge.
+     */
+    fun getPodDetail(ref: ResourceRef): PodDetail?
+
     fun listServices(filter: ServiceFilter): List<Service>
     fun listIngresses(filter: IngressFilter): List<Ingress>
     fun listPvcs(filter: PvcFilter): List<PersistentVolumeClaim>

@@ -24,6 +24,11 @@ dependencies {
     implementation(libs.bundles.spring.modulith)
     implementation(libs.kotlin.reflect)
 
+    // Cross-module: inventory enriquece PodDetail con runbooks vía knowledge.
+    // Importa SÓLO contratos públicos: application.port.inbound (QueryKnowledgePort)
+    // + domain.model (Citation value type). Justificado en ADR-0007.
+    implementation(project(":knowledge"))
+
     runtimeOnly(libs.flyway.postgresql)
 
     testImplementation(libs.bundles.testing)

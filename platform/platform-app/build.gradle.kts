@@ -37,7 +37,7 @@ dependencies {
 
     // Test
     testImplementation(libs.bundles.testing)
-    testRuntimeOnly("com.h2database:h2")
+    testRuntimeOnly("com.h2database:h2:2.3.232")
 }
 
 springBoot {

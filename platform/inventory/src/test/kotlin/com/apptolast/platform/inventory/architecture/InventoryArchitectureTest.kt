@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
 class InventoryArchitectureTest {
 
     private val classes = ClassFileImporter()
-        .withImportOption(ImportOption.DoNotIncludeTests)
+        .withImportOption(ImportOption.DoNotIncludeTests())
         .importPackages("com.apptolast.platform.inventory")
 
     @Test

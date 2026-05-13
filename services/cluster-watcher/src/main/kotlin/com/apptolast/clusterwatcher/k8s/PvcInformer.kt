@@ -26,25 +26,28 @@ class PvcInformer(
     @PostConstruct
     fun start() {
         val resyncMs = properties.resyncPeriodSeconds * 1000L
-        val source = if (properties.namespaces.isEmpty()) {
-            client.persistentVolumeClaims().inAnyNamespace()
-        } else {
-            client.persistentVolumeClaims().inNamespace(properties.namespaces.first())
+
+        val handler = object : ResourceEventHandler<PersistentVolumeClaim> {
+            override fun onAdd(pvc: PersistentVolumeClaim) {
+                if (shouldObserve(pvc.metadata.namespace)) publish(pvc, "ADD")
+            }
+            override fun onUpdate(old: PersistentVolumeClaim, current: PersistentVolumeClaim) {
+                if (shouldObserve(current.metadata.namespace)) publish(current, "UPDATE")
+            }
+            override fun onDelete(pvc: PersistentVolumeClaim, dfs: Boolean) {
+                if (shouldObserve(pvc.metadata.namespace)) publishDelete(pvc)
+            }
         }
 
-        val informerInstance = source.inform(
-            object : ResourceEventHandler<PersistentVolumeClaim> {
-                override fun onAdd(pvc: PersistentVolumeClaim) = publish(pvc, "ADD")
-                override fun onUpdate(old: PersistentVolumeClaim, current: PersistentVolumeClaim) =
-                    publish(current, "UPDATE")
-                override fun onDelete(pvc: PersistentVolumeClaim, dfs: Boolean) = publishDelete(pvc)
-            },
-            resyncMs,
-        )
+        val informerInstance: SharedIndexInformer<PersistentVolumeClaim> =
+            client.persistentVolumeClaims().inAnyNamespace().inform(handler, resyncMs)
 
         informer.set(informerInstance)
         log.info("PvcInformer started resyncMs={}", resyncMs)
     }
+
+    private fun shouldObserve(namespace: String?): Boolean =
+        properties.namespaces.isEmpty() || namespace in properties.namespaces
 
     @PreDestroy
     fun stop() {

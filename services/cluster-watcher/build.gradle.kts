@@ -36,6 +36,22 @@ dependencies {
     testImplementation(libs.bundles.testing)
 }
 
+// Toolchain JDK 21.
+extensions.configure<JavaPluginExtension> {
+    toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    testLogging { events("passed", "skipped", "failed") }
+}
+
 springBoot {
     mainClass.set("com.apptolast.clusterwatcher.ClusterWatcherApplicationKt")
     buildInfo()

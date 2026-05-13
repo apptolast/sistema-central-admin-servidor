@@ -26,24 +26,28 @@ class ServiceInformer(
     @PostConstruct
     fun start() {
         val resyncMs = properties.resyncPeriodSeconds * 1000L
-        val source = if (properties.namespaces.isEmpty()) {
-            client.services().inAnyNamespace()
-        } else {
-            client.services().inNamespace(properties.namespaces.first())
+
+        val handler = object : ResourceEventHandler<Service> {
+            override fun onAdd(svc: Service) {
+                if (shouldObserve(svc.metadata.namespace)) publish(svc, "ADD")
+            }
+            override fun onUpdate(old: Service, current: Service) {
+                if (shouldObserve(current.metadata.namespace)) publish(current, "UPDATE")
+            }
+            override fun onDelete(svc: Service, dfs: Boolean) {
+                if (shouldObserve(svc.metadata.namespace)) publishDelete(svc)
+            }
         }
 
-        val informerInstance = source.inform(
-            object : ResourceEventHandler<Service> {
-                override fun onAdd(svc: Service) = publish(svc, "ADD")
-                override fun onUpdate(old: Service, current: Service) = publish(current, "UPDATE")
-                override fun onDelete(svc: Service, dfs: Boolean) = publishDelete(svc)
-            },
-            resyncMs,
-        )
+        val informerInstance: SharedIndexInformer<Service> = client.services().inAnyNamespace()
+            .inform(handler, resyncMs)
 
         informer.set(informerInstance)
         log.info("ServiceInformer started resyncMs={}", resyncMs)
     }
+
+    private fun shouldObserve(namespace: String?): Boolean =
+        properties.namespaces.isEmpty() || namespace in properties.namespaces
 
     @PreDestroy
     fun stop() {

@@ -38,23 +38,22 @@ class PodInformer(
     fun start() {
         val resyncMs = properties.resyncPeriodSeconds * 1000L
 
-        val pods = if (properties.namespaces.isEmpty()) {
-            client.pods().inAnyNamespace()
-        } else {
-            // fabric8: para múltiples ns se crea un informer por namespace.
-            // En Phase 1 simplificamos a uno solo si hay namespaces especificados.
-            client.pods().inNamespace(properties.namespaces.first())
+        // Phase 1: observa todos los namespaces. Filtrado por properties.namespaces
+        // se aplica en el handler para no tropezar con el polimorfismo de fabric8.
+        val handler = object : ResourceEventHandler<Pod> {
+            override fun onAdd(pod: Pod) {
+                if (shouldObserve(pod.metadata.namespace)) onChange(pod, EventKind.ADD)
+            }
+            override fun onUpdate(old: Pod, current: Pod) {
+                if (shouldObserve(current.metadata.namespace)) onChange(current, EventKind.UPDATE)
+            }
+            override fun onDelete(pod: Pod, deletedFinalStateUnknown: Boolean) {
+                if (shouldObserve(pod.metadata.namespace)) onDelete(pod, deletedFinalStateUnknown)
+            }
         }
 
-        val informerInstance = pods.inform(
-            object : ResourceEventHandler<Pod> {
-                override fun onAdd(pod: Pod) = onChange(pod, EventKind.ADD)
-                override fun onUpdate(old: Pod, current: Pod) = onChange(current, EventKind.UPDATE)
-                override fun onDelete(pod: Pod, deletedFinalStateUnknown: Boolean) =
-                    onDelete(pod, deletedFinalStateUnknown)
-            },
-            resyncMs,
-        )
+        val informerInstance: SharedIndexInformer<Pod> = client.pods().inAnyNamespace()
+            .inform(handler, resyncMs)
 
         informer.set(informerInstance)
         log.info(
@@ -63,6 +62,9 @@ class PodInformer(
             properties.namespaces.ifEmpty { listOf("<all>") },
         )
     }
+
+    private fun shouldObserve(namespace: String?): Boolean =
+        properties.namespaces.isEmpty() || namespace in properties.namespaces
 
     @PreDestroy
     fun stop() {

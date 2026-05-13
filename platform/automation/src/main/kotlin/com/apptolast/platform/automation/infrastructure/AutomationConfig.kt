@@ -1,5 +1,6 @@
 package com.apptolast.platform.automation.infrastructure
 
+import com.apptolast.platform.automation.application.port.outbound.AuditLogRepository
 import com.apptolast.platform.automation.application.port.outbound.CommandExecutor
 import com.apptolast.platform.automation.application.service.SafeOpsKernel
 import com.apptolast.platform.automation.domain.model.Whitelist
@@ -15,6 +16,10 @@ import org.springframework.context.annotation.Profile
 @Configuration
 @ConditionalOnProperty(prefix = "automation", name = ["enabled"], havingValue = "true", matchIfMissing = true)
 class AutomationConfig {
+    // JPA scan implícito: el @SpringBootApplication en PlatformApplication.kt
+    // (paquete `com.apptolast.platform`) cubre todos los módulos. No declaramos
+    // @EnableJpaRepositories/@EntityScan aquí para no fragmentar la config
+    // ni añadir deps de spring-boot-autoconfigure al módulo automation.
 
     @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean
@@ -34,8 +39,11 @@ class AutomationConfig {
     fun commandExecutor(client: KubernetesClient): CommandExecutor = Fabric8CommandExecutor(client)
 
     @Bean
-    fun safeOpsKernel(whitelist: Whitelist, executor: CommandExecutor): SafeOpsKernel =
-        SafeOpsKernel(whitelist, executor)
+    fun safeOpsKernel(
+        whitelist: Whitelist,
+        executor: CommandExecutor,
+        audit: AuditLogRepository,
+    ): SafeOpsKernel = SafeOpsKernel(whitelist, executor, audit)
 }
 
 @ConfigurationProperties(prefix = "automation")

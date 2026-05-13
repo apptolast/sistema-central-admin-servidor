@@ -105,3 +105,7 @@ logging:
 tolerations: []
 nodeSelector: {}
 affinity: {}
+
+# Env vars extra inyectadas al pod sin tocar deployment.yaml.
+# Útil para flags por entorno (override Spring profile, OIDC issuer, etc.).
+extraEnv: {}

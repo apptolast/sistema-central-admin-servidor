@@ -68,6 +68,17 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.postgres.existingSecretName }}
                   key: password
+            # Excluye la auto-config de pgvector vector-store. El platform-app
+            # solo es CONSUMER de queries RAG (vía RestKnowledgeClient HTTP);
+            # el ingester (rag-ingestor service) es quien escribe a pgvector.
+            # Sin esta exclusión, la pgvector autoconfig pide un EmbeddingModel
+            # bean (OpenAI) que no debe vivir en platform-app.
+            - name: SPRING_AUTOCONFIGURE_EXCLUDE
+              value: org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+            {{- range $k, $v := .Values.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: {{ .Values.healthcheck.liveness.path }}

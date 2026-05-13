@@ -594,6 +594,11 @@ jobs:
       DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - name: Download Wasm distribution artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
       - uses: docker/setup-buildx-action@v3
       - name: Log into GHCR
         uses: docker/login-action@v3
@@ -615,14 +620,20 @@ jobs:
           else
             echo "tag=dev-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
           fi
+      - name: Compute tag list
+        id: tags
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            printf 'list<<EOF\nghcr.io/apptolast/frontend:%s\nghcr.io/apptolast/frontend:latest\nEOF\n' "${{ steps.tag.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            printf 'list<<EOF\nghcr.io/apptolast/frontend:%s\nEOF\n' "${{ steps.tag.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build + push frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: |
-            ghcr.io/apptolast/frontend:${{ steps.tag.outputs.tag }}
-            ${{ github.ref == 'refs/heads/main' && 'ghcr.io/apptolast/frontend:latest' || '' }}
+          tags: ${{ steps.tags.outputs.list }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}

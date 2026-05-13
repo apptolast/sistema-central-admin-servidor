@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: rag-ingestor
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://postgres-vector.n8n:5432/rag}
+    username: ${DB_USER:rag}
+    password: ${DB_PASSWORD:}
+
+server:
+  port: ${SERVER_PORT:8082}
+
+rag-ingestor:
+  repo-url: ${REPO_URL:https://github.com/apptolast/sistema-central-admin-servidor.git}
+  branch: ${REPO_BRANCH:main}
+  workdir: ${WORKDIR:/var/lib/rag-ingestor/repo}
+  poll-interval: ${POLL_INTERVAL:PT5M}
+  chunk-tokens: 512
+  chunk-overlap-tokens: 64
+  embedding-model: text-embedding-3-small
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.apptolast.ragingestor: DEBUG

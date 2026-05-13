@@ -7,6 +7,33 @@ Adherencia a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added — Phases 2-5 skeletons + frontend (2026-05-13, branch `feat/marathon-2026-05-13`)
+
+- **`frontend/composeApp/`** — Compose Multiplatform Web (wasmJs target) bootstrap:
+  - `settings.gradle.kts` + `composeApp/build.gradle.kts` (Compose MP 1.10.2, Kotlin 2.3.21, Ktor 3.4.1, kotlinx-serialization).
+  - Theme + design tokens Material 3 dark con acento `#00E676` (heredado de GreenhouseAdmin).
+  - `AppNavigator` minimal sin librería externa (state holder).
+  - 6 pantallas alineadas con `docs/design/specs/`:
+    - `PodDashboardScreen` (Material 3 LazyColumn + phase badges + filtros).
+    - `PodDetailScreen` (containers + resources + events).
+    - `RagQueryScreen` (chat con citation chips).
+    - `RunbookViewerScreen` (3 columnas con tree de 24 runbooks reales).
+    - `CronjobBoardScreen` (grid Adaptive con 10 cronjobs de cluster-ops).
+    - `LoginScreen` (placeholder Keycloak OIDC, Phase 4 dep).
+  - `data/InventoryClient.kt` cliente Ktor del backend platform-app.
+  - `wasmJsMain/main.kt` + `resources/index.html` con loader fallback.
+- **`platform/observability/`** — Phase 2 skeleton: events (AlertFired/SloBreach), domain (Slo + SLI types), ports (AlertingUseCase, SloRepository, MetricsQueryPort), ArchUnit test, `@ApplicationModule(allowedDependencies={inventory})`.
+- **`platform/secrets/`** — Phase 4 skeleton (frontend Passbolt): events sin plaintext (SecretAccessed/SecretRotated/SecretMarkedExpiring), Secret + RotationPolicy domain, `PassboltClient` port sin `getPlaintext` por diseño, ArchUnit defense-in-depth (rechaza clases `*Plaintext*` en api).
+- **`platform/automation/`** — Phase 5 skeleton: Runbook con RunbookId regex-validado, ExecutionMode (INFO_ONLY/SAFE_AUTO/HUMAN_CONFIRM), RunbookExecution con StepLog, integra con cluster-ops cronjobs existentes (no los reemplaza).
+- **`platform/knowledge/`** — Phase 3 skeleton: Citation con regex `[source: path#section@sha]`, Answer.Cited vs Answer.NoEvidence (anti-alucinación enforced en tipo), RagQueryUseCase con QueryOptions.minScore default 0.6. Tests: CitationTest cubre formato + extractAll + invariantes.
+- **`services/rag-ingestor/`** — microservicio Phase 3: poll git cada 5 min, chunkea markdown por H2/H3 sections, embeddings + upsert a pgvector (Spring AI). Test PvcInformerQuantityTest cubre el parser de slugify + section detection (15 tests).
+- **`platform/settings.gradle.kts`** activa los 5 módulos. **`platform-app/build.gradle.kts`** depende de todos.
+
+Build verification 2026-05-13:
+- `./gradlew assemble`  → BUILD SUCCESSFUL (5 modules + platform-app)
+- `./gradlew check`     → BUILD SUCCESSFUL (35+ tests)
+- `:inventory:test`     → 23 passing, 1 skipped (controller test bloqueado por KGP bug)
+
 ### Added — Phase 1 implementation (2026-05-13, branch `feat/marathon-2026-05-13`)
 
 - **`platform/inventory/`** — primer bounded context activo. Hexagonal completo:

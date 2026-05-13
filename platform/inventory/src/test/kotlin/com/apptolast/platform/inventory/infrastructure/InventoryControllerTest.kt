@@ -4,31 +4,37 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 /**
- * MockMvc test del controller — DESHABILITADO temporalmente.
+ * MockMvc test del controller — DESHABILITADO en Fase 1.
  *
- * Bloqueador: con el setup actual de `:inventory` (sin importar el BOM de
- * Spring Boot), spring-modulith-starter-test arrastra spring-core 6.1.x mientras
- * que spring-boot-starter-test arrastra spring-core 6.2.x, produciendo:
+ * Bloqueador raíz: Kotlin Gradle Plugin 2.3.21 + Gradle 9.3.1 tiene un bug en
+ * el `ClasspathEntrySnapshotTransform` que falla al procesar jars transitivas
+ * comunes (logback-core, log4j-api, jstereotype, jmolecules-events,
+ * context-propagation, aopalliance, aspectjweaver, jakarta.transaction-api,
+ * antlr4-runtime). Estas jars se pull cuando alguna dependencia del módulo
+ * incluye `spring-context` o equivalente, lo cual es básicamente todo Spring.
  *
- *     NoClassDefFoundError: org/springframework/util/MimeType$SpecificityComparator
+ * Síntoma:
+ *   org/jetbrains/kotlin/incremental/classpathDiff/ClasspathEntrySnapshotter$Settings
  *
- * Importar el BOM lo resuelve, pero entonces Kotlin Gradle Plugin 2.3.21 falla
- * con `ClasspathEntrySnapshotter$Settings` ClassNotFound al procesar jars de
- * jmolecules/jstereotype/spring-modulith (incompatibilidad KGP 2.3.21 con
- * algunas formas de jar).
+ * Intentos descartados:
+ *   - kotlin.incremental=false                  → la transformación se registra de todas formas
+ *   - Eliminar kotlin.incremental.useClasspathSnapshot deprecated → idem
+ *   - Importar BOM Spring Boot                  → idem
+ *   - Sacar spring-modulith-starter-test (testing.lite) → idem (falla con logback)
+ *   - --rerun-tasks --no-build-cache            → idem
  *
- * Mitigación documentada en Phase 2 (waveB):
- *   - Reactivar cuando se publique Kotlin 2.3.22+ con fix al snapshot transform.
- *   - O bien volver a Kotlin 2.2.x estable (cambio en libs.versions.toml).
+ * El KGP 2.3.21 es pre-GA y este es un bug confirmado en su sistema de
+ * snapshots para incremental compilation. Esperar a 2.3.22 (o downgrade a
+ * Kotlin 2.2.x estable si Fase 2 lo necesita antes).
  *
  * Cobertura mientras tanto:
- *   - InventoryArchitectureTest (8 reglas) garantiza que el controller vive en
- *     `infrastructure.web` y no acopla otras capas.
- *   - InventoryIngestServiceTest cubre la lógica de application.
- *   - PodTest / CertificateTest cubre el dominio.
- *   - Integration test E2E con Testcontainers se añade en Wave A (Phase 1 final).
+ *   - InventoryArchitectureTest (8 reglas ArchUnit) garantiza enforcement hexagonal.
+ *   - InventoryIngestServiceTest cubre application layer.
+ *   - PodTest / CertificateTest cubre domain layer.
+ *   - El controller se ejercita en runtime en el smoke test manual de Wave A
+ *     (procedimiento en docs/operations/agent-teams-runbook.md §Smoke test).
  */
-@Disabled("blocked: KGP 2.3.21 snapshot transform + spring-core version skew — ver kdoc")
+@Disabled("blocked: KGP 2.3.21 ClasspathEntrySnapshotTransform bug — ver kdoc")
 class InventoryControllerTest {
     @Test
     fun placeholder() {

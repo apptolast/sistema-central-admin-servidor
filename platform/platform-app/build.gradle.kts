@@ -29,11 +29,11 @@ dependencies {
     // Bounded context modules — se añaden via project(":<module>") cuando estén activos
     // implementation(project(":shared"))
     implementation(project(":inventory"))
-    // implementation(project(":observability"))
-    // implementation(project(":knowledge"))
-    // implementation(project(":secrets"))
+    implementation(project(":observability"))
+    implementation(project(":knowledge"))
+    implementation(project(":secrets"))
+    implementation(project(":automation"))
     // implementation(project(":identity"))
-    // implementation(project(":automation"))
 
     // Test
     testImplementation(libs.bundles.testing)

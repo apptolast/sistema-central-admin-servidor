@@ -185,3 +185,15 @@ testing = [
   "archunit-junit5",
   "springModulith-starter-test",
 ]
+# Bundle reducido — sin spring-modulith-starter-test. Necesario en módulos donde
+# KGP 2.3.21 tropieza con el snapshot transform de las jars transitivas de
+# jmolecules/jstereotype. Mantiene MockMvc/@WebMvcTest funcional.
+testing-lite = [
+  "springBoot-starter-test",
+  "junit-jupiter",
+  "kotest-runner-junit5",
+  "kotest-assertions-core",
+  "mockk",
+  "mockk-spring",
+  "archunit-junit5",
+]

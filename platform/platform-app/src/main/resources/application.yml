@@ -35,6 +35,15 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+
+  # ── Spring Modulith event registry ───────────────────────────────────────
+  # Modulith mantiene una tabla `event_publication` para el registry de
+  # eventos asíncronos. Auto-init crea el schema en el primer arranque.
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: true
     baseline-on-migrate: true
 
   # ── Threads ──────────────────────────────────────────────────────────────

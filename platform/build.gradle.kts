@@ -10,7 +10,9 @@ plugins {
     alias(libs.plugins.springBoot)            apply false
     alias(libs.plugins.springDependencyMgmt)  apply false
     alias(libs.plugins.ktlint)                apply false
-    alias(libs.plugins.detekt)                apply false
+    // TODO(phase-1): re-habilitar detekt cuando publiquen una versión compatible
+    //                con Kotlin 2.3 (detekt 1.23.x ABI-locked en Kotlin 2.0.10).
+    // alias(libs.plugins.detekt)             apply false
 }
 
 allprojects {
@@ -21,7 +23,7 @@ allprojects {
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
-    apply(plugin = "io.gitlab.arturbosch.detekt")
+    // detekt: disabled — see TODO arriba.
 
     repositories {
         mavenCentral()
@@ -40,7 +42,8 @@ subprojects {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
             freeCompilerArgs.addAll(
                 "-Xjsr305=strict",
-                "-Xcontext-receivers",
+                // -Xcontext-receivers fue removido en Kotlin 2.3; los context parameters
+                // (sucesor) están aún en preview y se activarán cuando los usemos en código.
             )
         }
     }

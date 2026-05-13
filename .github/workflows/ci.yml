@@ -48,9 +48,9 @@ jobs:
       - name: Lint (ktlint)
         run: ./gradlew ktlintCheck --no-daemon
 
-      - name: Static analysis (detekt)
-        run: ./gradlew detekt --no-daemon
-        continue-on-error: false
+      # TODO(phase-1): re-habilitar detekt cuando exista versión compatible con Kotlin 2.3
+      # - name: Static analysis (detekt)
+      #   run: ./gradlew detekt --no-daemon
 
       - name: Tests
         run: ./gradlew check --no-daemon

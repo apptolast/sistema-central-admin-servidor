@@ -20,5 +20,6 @@ dependencies {
     runtimeOnly(libs.flyway.postgresql)
 
     testImplementation(libs.bundles.testing)
+    testImplementation("io.fabric8:kubernetes-server-mock:7.0.1")
     testRuntimeOnly("com.h2database:h2:2.3.232")
 }

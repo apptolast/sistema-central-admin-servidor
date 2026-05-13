@@ -4,7 +4,9 @@ import com.apptolast.ragingestor.config.RagIngestorProperties
 import com.apptolast.ragingestor.git.DocIngester
 import org.slf4j.LoggerFactory
 import org.springframework.ai.document.Document
+import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import java.nio.file.Files
@@ -41,8 +43,8 @@ class MarkdownDocIngester(
     override fun ingest(relativePath: String, sha: String) {
         val absolute = Paths.get(properties.workdir, relativePath)
         if (!Files.exists(absolute)) {
-            log.debug("file removed since fetch, skipping: {}", relativePath)
-            // TODO soft-delete: filtrar metadata.path en pgvector y eliminar matches.
+            log.debug("file removed since fetch, soft-deleting chunks: {}", relativePath)
+            softDeleteChunks(relativePath)
             return
         }
 
@@ -80,6 +82,28 @@ class MarkdownDocIngester(
             .onFailure { e ->
                 log.error("failed to index {} @ {}: {}", relativePath, sha, e.message, e)
             }
+    }
+
+    /**
+     * Borra todos los chunks indexados que vinieran del file [relativePath].
+     * Usado cuando git pull detecta que el archivo fue eliminado o renombrado.
+     *
+     * pgvector se filtra por `metadata.path = relativePath`. Si VectorStore
+     * no está configured (dev sin DB), es no-op con log.
+     */
+    private fun softDeleteChunks(relativePath: String) {
+        val store = vectorStore ?: run {
+            log.debug("no VectorStore, skipping soft-delete for {}", relativePath)
+            return
+        }
+        runCatching {
+            val filter = FilterExpressionBuilder().eq("path", relativePath).build()
+            store.delete(filter)
+        }.onSuccess {
+            log.info("soft-deleted chunks for {} via metadata.path filter", relativePath)
+        }.onFailure { e ->
+            log.warn("soft-delete failed for {}: {}", relativePath, e.message)
+        }
     }
 
     internal data class Chunk(

@@ -9,9 +9,12 @@ plugins {
     alias(libs.plugins.kotlin.jpa)            apply false
     alias(libs.plugins.springBoot)            apply false
     alias(libs.plugins.springDependencyMgmt)  apply false
-    alias(libs.plugins.ktlint)                apply false
-    // TODO(phase-1): re-habilitar detekt cuando publiquen una versión compatible
-    //                con Kotlin 2.3 (detekt 1.23.x ABI-locked en Kotlin 2.0.10).
+    // TODO(phase-1): re-habilitar ktlint + detekt cuando publiquen versiones
+    //                compatibles con Kotlin 2.3.21. Hoy (2026-05-13):
+    //   - ktlint-gradle 12.1.1 → KtTokens.HEADER_KEYWORD not found (Kotlin 2.3 lexer cambió)
+    //   - detekt 1.23.7       → ABI-locked a Kotlin 2.0.10
+    //                GreenhouseAdmin (reference visual) tampoco los usa actualmente.
+    // alias(libs.plugins.ktlint)             apply false
     // alias(libs.plugins.detekt)             apply false
 }
 
@@ -22,8 +25,7 @@ allprojects {
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
-    apply(plugin = "org.jlleitschuh.gradle.ktlint")
-    // detekt: disabled — see TODO arriba.
+    // ktlint + detekt: disabled — see TODO arriba.
 
     repositories {
         mavenCentral()

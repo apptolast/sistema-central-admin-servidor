@@ -38,13 +38,10 @@ spring:
     baseline-on-migrate: true
 
   # ── Spring Modulith event registry ───────────────────────────────────────
-  # Modulith mantiene una tabla `event_publication` para el registry de
-  # eventos asíncronos. Auto-init crea el schema en el primer arranque.
-  modulith:
-    events:
-      jdbc:
-        schema-initialization:
-          enabled: true
+  # Usamos `spring-modulith-events-jpa` (no JDBC variant), por lo que la
+  # tabla `event_publication` es una entidad JPA. Con `ddl-auto: validate`,
+  # Hibernate no la crea — la crea Flyway en
+  # platform-app/src/main/resources/db/migration/V0__modulith_event_publication.sql
 
   # ── Threads ──────────────────────────────────────────────────────────────
   threads:

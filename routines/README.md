@@ -37,12 +37,15 @@ Los YAML aquí son **el source-of-truth versionado** de cada rutina. La configur
 | [`phase-progress-report`](./phase-progress-report.yaml) | Lunes 09:00 UTC | Genera reporte semanal de progreso y abre PR a `docs/progress/` | Por habilitar |
 | [`pr-reviewer`](./pr-reviewer.yaml) | GitHub `pull_request.opened` | Revisa cada PR según checklist de calidad y deja comentarios | Por habilitar |
 | [`nightly-arch-review`](./nightly-arch-review.yaml) | Diaria 02:00 UTC | Verifica invariantes de arquitectura y abre issue si hay regresiones | Por habilitar |
+| [`phase-orchestrator`](./phase-orchestrator.yaml) | Diaria 06:07 UTC | Lee `docs/marathon-plan.md`, identifica la wave ready, abre PRs draft por task y marca la wave como `in_progress` | Por habilitar |
+| [`runbook-migrator`](./runbook-migrator.yaml) | Martes y Viernes 02:23 UTC | Migra batches de 4 runbooks de `cluster-ops` a `docs/runbooks/` con frontmatter completo y estructura canónica | Por habilitar |
+| [`citation-validator-sweep`](./citation-validator-sweep.yaml) | Domingos 04:37 UTC | Barre `docs/**` aplicando `.claude/rules/citation-policy.md`: abre issues P1 por citas rotas y P2 por statements sin cita | Por habilitar |
+| [`dependency-update-radar`](./dependency-update-radar.yaml) | Domingos 06:53 UTC | Compara `platform/gradle/libs.versions.toml` con releases nuevas de dependencias críticas y abre issues agrupados (NO crea PRs) | Por habilitar |
 
 ## Rutinas planificadas (Phase 3+)
 
 - `docs-drift-detector` — Compara estado real del cluster vs `docs/` y propone PRs de actualización (necesita Fase 1 + Fase 3).
 - `inventory-sync-watchdog` — Verifica que el `cluster-watcher` está sincronizando OK (necesita Fase 1).
-- `dependency-update-radar` — Domingo 06:00 UTC, escanea releases de Spring/Kotlin/Keycloak.
 - `backup-verification` — Diaria 03:00 UTC, verifica que el backup nocturno Longhorn → Hetzner Storage Box terminó (Fase 6).
 - `runbook-execution-trigger` — Endpoint API que recibe `{runbook, params}` y los ejecuta con confirmación humana.
 

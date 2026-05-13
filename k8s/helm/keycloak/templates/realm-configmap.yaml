@@ -1,0 +1,75 @@
+{{- if .Values.keycloak.realmImport.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.keycloak.realmImport.configMapName }}
+  labels:
+    {{- include "keycloak.labels" . | nindent 4 }}
+data:
+  apptolast-realm.json: |-
+    {
+      "realm": "{{ .Values.keycloak.realmImport.realmName }}",
+      "enabled": true,
+      "displayName": "AppToLast IDP",
+      "displayNameHtml": "<strong>AppToLast</strong> Internal Developer Platform",
+      "registrationAllowed": false,
+      "registrationEmailAsUsername": false,
+      "rememberMe": true,
+      "verifyEmail": false,
+      "loginWithEmailAllowed": true,
+      "duplicateEmailsAllowed": false,
+      "resetPasswordAllowed": true,
+      "editUsernameAllowed": false,
+      "bruteForceProtected": true,
+      "permanentLockout": false,
+      "maxFailureWaitSeconds": 900,
+      "minimumQuickLoginWaitSeconds": 60,
+      "waitIncrementSeconds": 60,
+      "quickLoginCheckMilliSeconds": 1000,
+      "maxDeltaTimeSeconds": 43200,
+      "failureFactor": 5,
+      "defaultRoles": [
+        "viewer"
+      ],
+      "roles": {
+        "realm": [
+          { "name": "admin",    "description": "Plataforma — control total" },
+          { "name": "operator", "description": "Plataforma — disparar comandos no destructivos" },
+          { "name": "viewer",   "description": "Plataforma — read-only" }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": "idp-frontend",
+          "name": "AppToLast IDP Frontend (Compose Web)",
+          "enabled": true,
+          "publicClient": true,
+          "redirectUris": [
+            "https://idp.apptolast.com/*",
+            "http://localhost:8080/*"
+          ],
+          "webOrigins": [
+            "https://idp.apptolast.com",
+            "http://localhost:8080"
+          ],
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "attributes": {
+            "pkce.code.challenge.method": "S256"
+          }
+        },
+        {
+          "clientId": "idp-backend",
+          "name": "AppToLast IDP Backend (platform-app)",
+          "enabled": true,
+          "publicClient": false,
+          "bearerOnly": true,
+          "standardFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false
+        }
+      ],
+      "smtpServer": {}
+    }
+{{- end }}

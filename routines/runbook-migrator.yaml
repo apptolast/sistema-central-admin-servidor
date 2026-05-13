@@ -1,0 +1,174 @@
+# ============================================================================
+# Routine: runbook-migrator
+# Source-of-truth: este archivo. Editar en claude.ai/code/routines en paralelo.
+# ============================================================================
+
+name: runbook-migrator
+description: >
+  Migra los 27 runbooks de cluster-ops a docs/runbooks/ en batches de 4.
+  Normaliza estructura (Síntoma → Diagnóstico → Remedio → Verificación →
+  Prevención), añade frontmatter completo según docs/_template.md, y abre PR
+  draft. Se ejecuta dos veces por semana hasta agotar los 27 (~7 batches).
+
+trigger:
+  schedule:
+    cron: "23 2 * * 2,5"   # Martes y Viernes 02:23 UTC — fuera de :00/:30
+    timezone: UTC
+
+repositories:
+  - apptolast/sistema-central-admin-servidor
+
+environment: default
+
+connectors:
+  - github
+
+allow_unrestricted_branch_pushes: false  # sólo branches con prefijo claude/
+
+prompt: |
+  Migra el siguiente batch de 4 runbooks del repo legacy cluster-ops al estándar
+  docs/ del IDP. Cero alucinación: no inventes síntomas, diagnóstico ni remedios
+  que no estén en el runbook original — sólo reescribir/normalizar.
+
+  Contexto obligatorio:
+  - CLAUDE.md (convenciones del proyecto)
+  - docs/_template.md (frontmatter obligatorio — copiar literal y rellenar)
+  - .claude/rules/citation-policy.md §"Excepciones permitidas" (los runbooks
+    migrados deben tener `type: runbook` con citas allí donde el original
+    refiere recursos concretos del cluster)
+  - .claude/skills/validate-runbook/ (estructura canónica de runbook)
+  - Reference memory: /home/admin/.claude/projects/-home-admin-sistema-central-infra-servidor/memory/reference_cluster_ops_audit.md
+
+  Asunción de paths de entrada:
+  - Los 27 runbooks legacy viven en cluster-ops/audit/RUNBOOKS/RB-*.md en otro
+    repo (apptolast/cluster-ops). Esta routine asume que están sincronizados
+    al working tree del entorno en external/cluster-ops-runbooks/RB-*.md
+    mediante el setup-script del entorno de la routine (o un submódulo, o un
+    pre-step que clona el repo via gh repo clone si el connector lo permite).
+  - Si NO existe external/cluster-ops-runbooks/: abre un issue único label
+    `runbook-migrator-blocked` P1 con título "runbook-migrator: external/
+    cluster-ops-runbooks no encontrado" y body explicando el setup pendiente.
+    Salir.
+
+  Pasos:
+
+  1. Listar runbooks ya migrados:
+     find docs/runbooks -maxdepth 2 -name "RB-*.md" -o -name "*.md" \
+       | grep -v "_template" | sort
+
+  2. Listar runbooks origen:
+     ls external/cluster-ops-runbooks/RB-*.md | sort
+
+  3. Diff: identifica los runbooks NO migrados todavía (por nombre de archivo
+     normalizado: rb-<kebab>.md → docs/runbooks/rb-<kebab>.md).
+
+  4. Tomar los primeros 4 runbooks NO migrados en orden alfabético.
+     Si quedan < 4: migra los que queden y nota en el PR que es el batch final.
+     Si quedan 0: SILENCIO total. NO abras PR, NO comentes.
+
+  5. Para cada runbook seleccionado:
+     a. Leer el archivo origen completo.
+     b. Construir el frontmatter (copiar de docs/_template.md y rellenar):
+          title: <título humano descriptivo, no el id RB-XXX>
+          type: runbook
+          owner: pablo
+          source-of-truth: <comando kubectl/journalctl/etc que el runbook
+                           original cita como diagnóstico — si el original
+                           no cita ninguno, dejar el primer comando del
+                           paso "Diagnóstico" como source-of-truth>
+          last-verified: <fecha ISO UTC de hoy>
+          tags: [runbook, <tag extraído del runbook original>, ...]
+          status: stable
+          depends-on: [<recursos del cluster que el runbook menciona,
+                       en formato namespace:X, service:Y, pvc:Z>]
+          related-runbooks: [<otros RBs referenciados en el cuerpo del original>]
+
+     c. Reescribir el cuerpo a la estructura canónica:
+        ## Síntoma
+        <descripción del síntoma observable que dispara el runbook —
+         tomado literal del original si está, parafraseado si está disperso>
+
+        ## Diagnóstico
+        <pasos/comandos para confirmar la causa raíz>
+
+        ## Remedio
+        <pasos/comandos de remediación, en orden estricto>
+
+        ## Verificación
+        <cómo confirmar que el remedio funcionó>
+
+        ## Prevención
+        <medidas para evitar recurrencia — si el original no las menciona,
+         escribir literalmente: "Sin medida de prevención documentada en el
+         runbook original. Pendiente de definir en review." Y abrir un TODO
+         comment al final del archivo>
+
+     d. Citar al runbook original al pie del archivo:
+        ---
+        ## Origen
+        Migrado desde `cluster-ops/audit/RUNBOOKS/<nombre original>`
+        ([commit en cluster-ops](https://github.com/apptolast/cluster-ops/blob/HEAD/audit/RUNBOOKS/<nombre>))
+        por la routine `runbook-migrator` el <fecha>.
+
+     e. Guardar como docs/runbooks/rb-<kebab-case-del-titulo>.md
+
+  6. Actualizar docs/runbooks/README.md (si no existe, crearlo) con la tabla:
+     | ID | Título | Síntoma resumido | Status | Última verificación |
+     Añadir las 4 nuevas filas en orden alfabético. Si el README no existe,
+     créalo con un encabezado mínimo y la tabla.
+
+  7. Crear branch + commit + PR draft:
+     a. Branch: claude/runbook-migration-batch-<N>
+        donde <N> = (runbooks ya en docs/runbooks/ antes de este batch) / 4 + 1
+     b. Commit:
+        "docs(runbooks): migrate batch <N> from cluster-ops
+
+         Migrated runbooks:
+         - <título 1> (docs/runbooks/rb-<slug-1>.md)
+         - <título 2> (docs/runbooks/rb-<slug-2>.md)
+         - <título 3> (docs/runbooks/rb-<slug-3>.md)
+         - <título 4> (docs/runbooks/rb-<slug-4>.md)
+
+         Source: apptolast/cluster-ops audit/RUNBOOKS/
+         Routine: runbook-migrator.yaml"
+     c. PR draft:
+        Título: "docs(runbooks): migrate batch <N> (<N*4-3>/27 → <N*4>/27)"
+        Body:
+          ## Origen
+          Migración automática del batch <N> desde `apptolast/cluster-ops`.
+          Cada runbook ha sido normalizado a la estructura canónica
+          Síntoma → Diagnóstico → Remedio → Verificación → Prevención.
+
+          ## Runbooks en este batch
+          - [rb-<slug-1>.md](../blob/<branch>/docs/runbooks/rb-<slug-1>.md)
+          - [rb-<slug-2>.md](../blob/<branch>/docs/runbooks/rb-<slug-2>.md)
+          - [rb-<slug-3>.md](../blob/<branch>/docs/runbooks/rb-<slug-3>.md)
+          - [rb-<slug-4>.md](../blob/<branch>/docs/runbooks/rb-<slug-4>.md)
+
+          ## Validación recomendada antes de merge
+          - [ ] Cada runbook tiene frontmatter completo (validar con `.claude/skills/validate-runbook/`)
+          - [ ] El comando en `source-of-truth` se ha verificado manualmente
+          - [ ] Las relaciones `depends-on` y `related-runbooks` son correctas
+          - [ ] Si "Prevención" dice "Pendiente de definir", abrir issue follow-up
+
+          ## Progreso global
+          Batch <N> de aproximadamente 7. Runbooks migrados acumulados: <N*4 cota> / 27.
+
+          ---
+          Automated PR from routine `runbook-migrator`. Ver fuente en
+          routines/runbook-migrator.yaml.
+        Labels: automated, docs, runbooks, batch/<N>
+
+  REGLAS ESTRICTAS:
+  - NO inventes pasos de diagnóstico/remedio que no estén en el original.
+    Si el original es ambiguo, copia literal y marca con `<!-- AMBIGUO: revisar -->`.
+  - NO mergees el PR. NO cierres PRs previos pendientes.
+  - Si encuentras un runbook con marcas claras de obsolescencia (refiere
+    versiones de software o recursos que ya no existen), márcalo con
+    `status: deprecated` en el frontmatter y nota en el body.
+  - Cada referencia a un recurso concreto del cluster (pod, namespace, secret,
+    cronjob) debe llevar una cita estática según .claude/rules/citation-policy.md §3.
+
+  Output esperado:
+  - Si quedan ≥1 runbook por migrar: 1 PR draft URL en STDOUT.
+  - Si quedan 0: silencio.

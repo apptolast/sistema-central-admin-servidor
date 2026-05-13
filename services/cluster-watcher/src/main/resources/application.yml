@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: cluster-watcher
+  main:
+    web-application-type: servlet
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${SERVER_PORT:8081}
+  shutdown: graceful
+
+cluster-watcher:
+  platform-base-url: ${PLATFORM_BASE_URL:http://platform:8080}
+  platform-ingest-endpoint: /api/v1/internal/inventory/ingest
+  resync-period-seconds: ${RESYNC_PERIOD_SECONDS:30}
+  namespaces: []                 # vacío = todos
+  dry-run: ${DRY_RUN:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    com.apptolast.clusterwatcher: DEBUG
+    io.fabric8.kubernetes.client: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

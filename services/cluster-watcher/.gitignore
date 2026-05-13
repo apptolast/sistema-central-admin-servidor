@@ -1,0 +1,7 @@
+# Gradle wrapper se copia desde platform/ en CI y dev local.
+# No queremos versiones duplicadas en el repo.
+gradle/
+gradlew
+gradlew.bat
+.gradle/
+build/

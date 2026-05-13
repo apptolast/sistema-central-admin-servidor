@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: rag-ingestor
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://postgres-vector.n8n:5432/rag}
+    username: ${DB_USER:rag}
+    password: ${DB_PASSWORD:}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        # Flyway owns el schema (V1__rag_init.sql); Spring AI no inicializa.
+        initialize-schema: false
+        dimensions: 1536
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        schema-name: public
+        table-name: vector_store
+
+server:
+  port: ${SERVER_PORT:8083}
+
+rag-ingestor:
+  repo-url: ${REPO_URL:https://github.com/apptolast/sistema-central-admin-servidor.git}
+  branch: ${REPO_BRANCH:main}
+  workdir: ${WORKDIR:/var/lib/rag-ingestor/repo}
+  poll-interval: ${POLL_INTERVAL:PT5M}
+  chunk-tokens: 512
+  chunk-overlap-tokens: 64
+  embedding-model: text-embedding-3-small
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.apptolast.ragingestor: DEBUG

@@ -1,0 +1,53 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "apptolast-platform.fullname" . }}
+  labels:
+    {{- include "apptolast-platform.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.ingress.host }}`)
+      kind: Rule
+      services:
+        - name: {{ include "apptolast-platform.fullname" . }}
+          port: {{ .Values.service.port }}
+      middlewares:
+        - name: {{ .Values.ingress.middlewareSecurityHeaders }}
+  tls:
+    secretName: {{ printf "%s-tls" (include "apptolast-platform.fullname" .) }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ printf "%s-tls" (include "apptolast-platform.fullname" .) }}
+  labels:
+    {{- include "apptolast-platform.labels" . | nindent 4 }}
+spec:
+  secretName: {{ printf "%s-tls" (include "apptolast-platform.fullname" .) }}
+  dnsNames:
+    - {{ .Values.ingress.host }}
+  issuerRef:
+    name: {{ .Values.ingress.certIssuer }}
+    kind: ClusterIssuer
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Values.ingress.middlewareSecurityHeaders }}
+  labels:
+    {{- include "apptolast-platform.labels" . | nindent 4 }}
+spec:
+  headers:
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    stsPreload: true
+    contentTypeNosniff: true
+    browserXssFilter: true
+    referrerPolicy: strict-origin-when-cross-origin
+    customResponseHeaders:
+      X-Frame-Options: DENY
+      Permissions-Policy: "geolocation=(), microphone=(), camera=()"
+{{- end }}

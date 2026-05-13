@@ -1,0 +1,99 @@
+# ============================================================================
+# Default values for keycloak (Wave-D D1).
+# Override por entorno con values-dev.yaml / values-prod.yaml.
+# ============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: "26.6.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1   # single-node cluster
+
+resources:
+  requests:
+    cpu: 300m
+    memory: 768Mi
+  limits:
+    cpu: "1"
+    memory: 1280Mi
+
+# Modo de arranque. En production REAL queremos `start` (no `start-dev`),
+# pero para Phase 4 D1 scaffold dejamos start-dev (no requiere SSL configurado
+# externamente, tiene cache local en disco, y permite el primer login para
+# crear users). Promoción a `start` se hace en D8 hardening.
+keycloak:
+  mode: "start-dev"
+  # Realm to auto-import en el arranque. Si está vacío, no se importa nada y
+  # se entra solo con master/admin.
+  realmImport:
+    enabled: true
+    realmName: apptolast
+    configMapName: keycloak-apptolast-realm
+
+# Admin bootstrap credentials. SIEMPRE vienen de un Secret externo —
+# nunca en values.yaml. El operador crea el secret antes del install
+# con `kubectl create secret generic keycloak-admin-credentials
+# --from-literal=username=admin --from-literal=password=$(openssl rand -base64 24)`.
+# Ver docs/services/keycloak.md.
+admin:
+  existingSecretName: "keycloak-admin-credentials"
+
+# Base de datos.
+# dev (default): H2 file-based en /opt/keycloak/data → PVC Longhorn 2Gi.
+# prod:          Postgres externo, mismo cluster (postgres-platform).
+database:
+  vendor: "h2-file"      # h2-file | postgres
+  postgres:
+    host: postgres-platform
+    port: 5432
+    database: keycloak
+    existingSecretName: keycloak-postgres-credentials  # claves: user, password
+
+persistence:
+  enabled: true
+  storageClass: longhorn
+  size: 2Gi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  host: auth.apptolast.com
+  # Reuse del clusterissuer de cert-manager existente.
+  certIssuer: cloudflare-clusterissuer
+  className: traefik
+
+serviceAccount:
+  create: true
+  name: keycloak
+
+# Probes oficiales de Keycloak 26+.
+healthcheck:
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 5
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+keel:
+  policy: minor
+  trigger: poll
+  pollSchedule: "@every 6h"
+
+tolerations: []
+nodeSelector: {}
+affinity: {}

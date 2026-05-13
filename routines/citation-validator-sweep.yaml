@@ -1,0 +1,183 @@
+# ============================================================================
+# Routine: citation-validator-sweep
+# Source-of-truth: este archivo. Editar en claude.ai/code/routines en paralelo.
+# ============================================================================
+
+name: citation-validator-sweep
+description: >
+  Barrido semanal de todas las citas en docs/. Detecta citas rotas (path/sha/
+  anchor inválidos) y statements factuales sin cita. Abre issues priorizados
+  según severidad. Silencio si todo está limpio. Política implementada:
+  .claude/rules/citation-policy.md (las 5 capas anti-alucinación).
+
+trigger:
+  schedule:
+    cron: "37 4 * * 0"     # Domingos 04:37 UTC — fuera de :00/:30
+    timezone: UTC
+
+repositories:
+  - apptolast/sistema-central-admin-servidor
+
+environment: default
+
+connectors:
+  - github
+
+allow_unrestricted_branch_pushes: false
+
+prompt: |
+  Ejecuta el citation validator sobre TODOS los documentos en docs/. Aplica
+  estrictamente la política de .claude/rules/citation-policy.md. Cero falsos
+  positivos en categoría BROKEN (estática verificable); warnings de NO-CITE
+  sí pueden tener falsos positivos (heurística regex).
+
+  Contexto obligatorio:
+  - .claude/rules/citation-policy.md (las 5 capas, especialmente §3 formatos
+    válidos y §"Excepciones permitidas")
+  - .claude/skills/rag-cite-or-die/SKILL.md (cuando esté implementada en
+    Fase 3 — hasta entonces, usar el fallback inline descrito abajo)
+  - ARCHITECTURE.md §2.4 (las 5 capas anti-alucinación)
+  - CLAUDE.md "Segundo cerebro — reglas inquebrantables"
+
+  Conjunto de archivos a barrer:
+  - Incluir: docs/**/*.md
+  - Excluir (según .claude/rules/citation-policy.md §"Excepciones permitidas"):
+    * docs/_template.md
+    * docs/_drafts/**
+    * docs/_live/**
+  - Excluir también por convenir al sweep (no aportan):
+    * docs/progress/**  (reportes de routine, citas auto-generadas)
+
+  Pasos:
+
+  1. Verificar si existe .claude/skills/rag-cite-or-die/check.sh:
+     a. Si existe: usar la skill oficial:
+          bash .claude/skills/rag-cite-or-die/check.sh docs/**/*.md
+     b. Si NO existe (Fase 3 aún pendiente): usar fallback inline descrito en
+        los pasos 2–4 abajo.
+
+  2. Recolectar todos los archivos a procesar (lista FILES).
+
+  3. Por cada archivo en FILES — DETECTAR CITAS:
+     a. Citas estáticas (regex): `\[source:\s*([^\]@]+)(#([^@\]]+))?@([^\]]+)\]`
+        Grupos: path, anchor (opcional), sha-or-ref.
+     b. Citas live (regex): `\[source:\s*live:([^@\]]+)@([^\]]+)\]`
+        Grupos: snapshot-id, timestamp.
+
+  4. Por cada cita estática extraída — VALIDAR:
+     a. ¿`<path>` existe en el repo (git cat-file -e HEAD:<path>)?
+        Si NO → BROKEN type: path-not-found.
+     b. ¿`<sha-or-ref>` es resoluble (git rev-parse <sha>^{commit})?
+        Si NO y no es HEAD → BROKEN type: sha-not-in-history.
+     c. ¿`<anchor>` (si existe) aparece como heading o explícito en
+        `git show <sha>:<path>`?
+        Si NO → BROKEN type: anchor-not-found.
+
+  5. Por cada cita live — VALIDAR:
+     a. Si la tabla live_documents existe en pgvector (Fase 3+): verificar
+        que el snapshot referenciado existe y su timestamp coincide.
+     b. Si la tabla NO existe aún: skip silenciosamente (no es broken — la
+        infra todavía no está). NO loguear false positives.
+
+  6. Por cada archivo en FILES — DETECTAR LIKELY-NO-CITE (heurística):
+     Recorrer líneas. Para cada línea, comprobar si menciona keywords:
+       (versión|version|deploy|deployment|pod|namespace|cronjob|service|
+        secret|configmap|pvc|ingress|node|cluster|backup|cve)
+     Si la línea menciona ≥1 keyword Y NO contiene `[source:` dentro de los
+     siguientes 3 párrafos del mismo archivo:
+       → likely-no-cite warning (severity NIT/P2).
+     Excluir:
+       - Líneas en bloques de código ```...```
+       - Líneas en bloques de comentario HTML <!-- -->
+       - Líneas dentro de tablas markdown (`|`)
+       - Headers (líneas que empiezan con #)
+       - Líneas con marcadores explícitos: "<!-- no-cite-required -->"
+
+  7. Agregación y reporting:
+     a. Contar BROKEN encontrados (total y por tipo).
+     b. Contar likely-no-cite warnings (total).
+     c. Decidir:
+        - Si broken_count >= 1: abrir issue label `citation-broken` priority/P1
+          con el detalle (un finding por archivo afectado, incluyendo el
+          número de línea exacto y la cita inválida literal).
+        - Si likely_no_cite_count >= 5: abrir issue label `citation-no-cite`
+          priority/P2 con la lista agrupada por archivo (top 20 findings,
+          resto en summary count).
+        - Si broken_count == 0 Y likely_no_cite_count < 5: SILENCIO. NO crear
+          ningún issue. NO comentar.
+
+  8. Plantilla del issue `citation-broken` (P1):
+     Título: "citation-sweep YYYY-MM-DD: <N> citas rotas detectadas"
+     Body:
+       ## Detectado el YYYY-MM-DD HH:MM UTC
+
+       ### Resumen
+       - Archivos escaneados: <total>
+       - Citas estáticas verificadas: <total>
+       - Citas BROKEN: <N>
+
+       ### Findings BROKEN
+
+       #### `<archivo>` líneas <N>
+       Cita inválida: `[source: <path>#<anchor>@<sha>]`
+       Tipo de fallo: <path-not-found | sha-not-in-history | anchor-not-found>
+       Línea afectada (snippet):
+       > <línea>
+
+       (repetir por cada finding)
+
+       ### Política violada
+       .claude/rules/citation-policy.md §3 — "Toda respuesta DEBE incluir citas
+       válidas". Capa 4 (citation validator middleware) bloquearía estas
+       respuestas con HTTP 422 en runtime.
+
+       ### Remedio
+       Corregir cada cita rota antes del próximo merge a main. La routine
+       reescaneará el próximo domingo.
+
+       ---
+       🤖 Generado por la routine `citation-validator-sweep`. Ver fuente en
+       routines/citation-validator-sweep.yaml.
+
+  9. Plantilla del issue `citation-no-cite` (P2):
+     Título: "citation-sweep YYYY-MM-DD: <N> statements posiblemente sin cita"
+     Body:
+       ## Detectado el YYYY-MM-DD HH:MM UTC
+
+       ### Resumen
+       Warnings heurísticos: statements que mencionan recursos del cluster o
+       versiones de software y NO tienen `[source:` cercano. La heurística
+       puede dar falsos positivos — revisar uno por uno.
+
+       ### Top 20 findings
+       #### `<archivo>` línea <N>
+       Keyword detectada: `<keyword>`
+       Snippet:
+       > <línea>
+
+       (repetir hasta 20)
+
+       <si hay >20>
+       ### Resto
+       Otros <M> warnings en <K> archivos. Lista completa en el log de la routine.
+
+       ### Política aplicada
+       .claude/rules/citation-policy.md §"Qué se considera afirmación factual".
+
+       ---
+       🤖 Generado por la routine `citation-validator-sweep`. Ver fuente en
+       routines/citation-validator-sweep.yaml.
+
+  REGLAS ESTRICTAS:
+  - Cero falsos positivos en BROKEN: si dudas, NO marques como broken.
+  - Antes de abrir un issue P1, verifica si ya existe un issue abierto con el
+    mismo label y resumen (mismo conjunto de archivos):
+      gh issue list --label citation-broken --state open --json title,body
+    Si existe: comenta "Re-detected on <fecha>" en el existente; NO abras uno nuevo.
+  - Mismo deduplication para P2.
+  - NO modifiques ningún archivo del repo.
+  - NO mergees ni cierres nada.
+
+  Output esperado:
+  - Si todo limpio: silencio total, exit 0.
+  - Si broken o ≥5 no-cite: 1 o 2 issues abiertos. URLs en STDOUT.

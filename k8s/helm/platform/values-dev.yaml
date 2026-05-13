@@ -1,0 +1,34 @@
+# Overrides para entorno de desarrollo.
+# Usado por: helm upgrade --install platform-dev . -f values-dev.yaml -n platform-dev
+
+image:
+  tag: latest                    # dev acepta latest; prod fija versión semver
+
+keel:
+  policy: force                  # dev re-pull en cada digest
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1
+    memory: 1Gi
+
+springProfile: dev
+
+ingress:
+  enabled: true
+  host: idp-dev.apptolast.com
+  certIssuer: cloudflare-clusterissuer
+
+logging:
+  level:
+    root: INFO
+    com.apptolast: DEBUG
+    org.springframework.modulith: DEBUG
+
+networkPolicy:
+  enabled: false                 # más simple en dev para que kubectl port-forward funcione

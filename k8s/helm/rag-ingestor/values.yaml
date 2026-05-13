@@ -1,0 +1,93 @@
+# ============================================================================
+# Default values for apptolast-rag-ingestor.
+# ============================================================================
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/apptolast/rag-ingestor
+  tag: 0.1.0-SNAPSHOT
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# CronJob schedule — every 15 min. Documentation drift surfaces fast.
+schedule: "*/15 * * * *"
+concurrencyPolicy: Forbid
+successfulJobsHistoryLimit: 3
+failedJobsHistoryLimit: 5
+startingDeadlineSeconds: 300
+backoffLimit: 2
+activeDeadlineSeconds: 600
+
+# Repo a clonar. Default = el mismo monorepo.
+repo:
+  url: "https://github.com/apptolast/sistema-central-admin-servidor.git"
+  branch: "main"
+  # Si el repo es privado, montar Secret con SSH key o PAT.
+  # tokenSecret:
+  #   name: rag-ingestor-git
+  #   key: token
+
+# Postgres + pgvector. Reutilizamos la misma DB que rag-query.
+database:
+  url: "jdbc:postgresql://postgres-vector.n8n.svc.cluster.local:5432/rag"
+  userSecret:
+    name: rag-ingestor-db
+    userKey: username
+    passwordKey: password
+
+# OpenAI API key — DEBE venir de Passbolt → Secret externo. NUNCA inline.
+openai:
+  apiKeySecret:
+    name: rag-ingestor-openai
+    key: api-key
+
+config:
+  # Glob de paths bajo el repo que se indexan. Resto se ignora.
+  pathGlob: "docs/**/*.md"
+  embeddingsModel: text-embedding-3-small
+  embeddingDimension: 1536
+  chunkSize: 1200
+  chunkOverlap: 150
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+jvmOpts:
+  initialRAMPercentage: 50
+  maxRAMPercentage: 75
+
+# Volumen ephemeral para clonar el repo. Se descarta al final del Job.
+workdir:
+  size: 5Gi
+  storageClassName: longhorn-single-replica
+
+serviceAccount:
+  create: true
+  name: rag-ingestor
+
+# Pod-level securityContext (defense in depth).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop: ["ALL"]
+
+tolerations: []
+nodeSelector: {}
+affinity: {}

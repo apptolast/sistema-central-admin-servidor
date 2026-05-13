@@ -1,0 +1,118 @@
+# ============================================================================
+# Allow ingress sólo desde pods de la app (label app.kubernetes.io/part-of=
+# apptolast-invernadero) hacia TimescaleDB, PostgreSQL metadata, Redis, EMQX.
+# ============================================================================
+# Pareja con 00-default-deny-apptolast-invernadero-api.yaml. Sin este allow,
+# los pods de la app del propio invernadero pierden acceso a sus DBs.
+#
+# Source: cluster-ops/audit/NODEPORT_EXPOSURE_AUDIT_2026-05-05.md §"Resultado de
+# conectividad local" — los NodePorts viajan también vía ClusterIP interno, no
+# sólo desde fuera del nodo; cerrar ingress en el pod es la defensa real.
+#
+# Nota: si hay pods externos (n8n, devices) que conectan vía NodePort desde
+# Internet, esta NetworkPolicy NO afecta a su acceso por NodePort — para eso
+# se necesita firewall a nivel Hetzner (cluster-firewall) o cambiar NodePort →
+# ClusterIP + VPN/WireGuard (ver runbook NODEPORT_EXPOSURE_AUDIT §Recomendación).
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-timescaledb
+  namespace: apptolast-invernadero-api
+  labels:
+    apptolast.com/hardening: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: timescaledb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: apptolast-invernadero
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-postgres-metadata
+  namespace: apptolast-invernadero-api
+  labels:
+    apptolast.com/hardening: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql-metadata
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: apptolast-invernadero
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-redis
+  namespace: apptolast-invernadero-api
+  labels:
+    apptolast.com/hardening: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: apptolast-invernadero
+      ports:
+        - protocol: TCP
+          port: 6379
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mqtt-to-emqx
+  namespace: apptolast-invernadero-api
+  labels:
+    apptolast.com/hardening: "true"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: emqx
+  policyTypes:
+    - Ingress
+  ingress:
+    # MQTT plain (1883) y MQTT TLS (8883) abiertos desde devices fuera del cluster
+    # → se mantienen NodePort. Dashboard (18083) y APIs internas (8081/8083/8084)
+    # sólo permitido desde pods de la app.
+    - from: []         # any source — devices IoT externos
+      ports:
+        - protocol: TCP
+          port: 1883
+        - protocol: TCP
+          port: 8883
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: apptolast-invernadero
+      ports:
+        - protocol: TCP
+          port: 18083
+        - protocol: TCP
+          port: 8081
+        - protocol: TCP
+          port: 8083
+        - protocol: TCP
+          port: 8084

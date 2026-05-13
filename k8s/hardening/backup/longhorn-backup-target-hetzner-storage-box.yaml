@@ -1,0 +1,90 @@
+# ============================================================================
+# Longhorn BackupTarget hacia Hetzner Storage Box vía S3 (Minio compat).
+# ============================================================================
+# Source: cluster-ops/audit/LONGHORN_BACKUP_AND_REPLICA_AUDIT_2026-05-05.md
+# - Finding: replica=1 single-node, sin backup remoto.
+# - Riesgo: SPOF total para PVCs (TimescaleDB, PGs, EMQX, Redis, n8n state).
+#
+# Pre-requisitos a configurar MANUALMENTE antes de aplicar:
+#   1. Crear Storage Box en console.hetzner.com (recomendado: 1 TB plan ≈ 12 €/mes).
+#   2. Habilitar S3-compatible API (Hetzner Storage Box → Sub-account con S3 perms).
+#   3. Crear bucket `longhorn-backup-apptolast`.
+#   4. Crear Secret `longhorn-backup-credential` con AWS_ACCESS_KEY_ID,
+#      AWS_SECRET_ACCESS_KEY, AWS_ENDPOINTS (URL del Storage Box).
+#
+# Procedimiento:
+#   1. Aplicar el Secret (NUNCA committear plaintext — usar `kubectl create secret`
+#      manualmente desde Passbolt → ver SECRETS_BOOTSTRAP runbook).
+#   2. Aplicar este YAML.
+#   3. Verificar: kubectl -n longhorn-system get backuptarget default -o yaml.
+#   4. Disparar un backup test: kubectl annotate volume -n longhorn-system <pvc-vol>
+#      longhorn.io/last-backup-request="$(date +%s)".
+# ============================================================================
+---
+# El Secret NO se committe — sólo se documenta su estructura. Crear con:
+#   kubectl create secret generic longhorn-backup-credential \
+#     -n longhorn-system \
+#     --from-literal=AWS_ACCESS_KEY_ID="<sub-account-id>" \
+#     --from-literal=AWS_SECRET_ACCESS_KEY="<password>" \
+#     --from-literal=AWS_ENDPOINTS="https://<storage-box-host>:443"
+#
+# Estructura esperada (NO aplicar, sólo referencia):
+#
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: longhorn-backup-credential
+#   namespace: longhorn-system
+# type: Opaque
+# stringData:
+#   AWS_ACCESS_KEY_ID: "REPLACE_FROM_PASSBOLT"
+#   AWS_SECRET_ACCESS_KEY: "REPLACE_FROM_PASSBOLT"
+#   AWS_ENDPOINTS: "https://uXXXX.your-storagebox.de:443"
+---
+apiVersion: longhorn.io/v1beta2
+kind: BackupTarget
+metadata:
+  name: default
+  namespace: longhorn-system
+  labels:
+    apptolast.com/hardening: "true"
+    apptolast.com/source: "longhorn-audit-2026-05-05"
+spec:
+  backupTargetURL: "s3://longhorn-backup-apptolast@hetzner-storagebox/"
+  credentialSecret: longhorn-backup-credential
+  pollInterval: "5m"
+---
+# RecurringJob diario para PVCs marcados con label backup.apptolast.com/policy=daily
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: daily-backup
+  namespace: longhorn-system
+  labels:
+    apptolast.com/hardening: "true"
+spec:
+  cron: "0 2 * * *"          # 02:00 UTC cada día
+  task: backup
+  groups:
+    - default
+  retain: 7                   # 7 días de retención remoto
+  concurrency: 2
+  labels:
+    backup-job: "daily"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: weekly-backup
+  namespace: longhorn-system
+  labels:
+    apptolast.com/hardening: "true"
+spec:
+  cron: "0 3 * * 0"          # domingos 03:00 UTC
+  task: backup
+  groups:
+    - default
+  retain: 4                   # 4 semanas
+  concurrency: 1
+  labels:
+    backup-job: "weekly"

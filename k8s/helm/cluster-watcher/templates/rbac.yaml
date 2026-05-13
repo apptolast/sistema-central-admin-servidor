@@ -1,0 +1,55 @@
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "cluster-watcher.serviceAccountName" . }}
+  labels:
+    {{- include "cluster-watcher.labels" . | nindent 4 }}
+---
+{{- end }}
+{{- if .Values.rbac.create }}
+# Lectura cluster-wide de los recursos que observamos.
+# Sin permisos de write — el watcher es solo-lectura.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cluster-watcher.fullname" . }}-reader
+  labels:
+    {{- include "cluster-watcher.labels" . | nindent 4 }}
+rules:
+  # Core API
+  - apiGroups: [""]
+    resources: ["pods", "services", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  # Ingress (clásico)
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  # IngressRoute / IngressRouteTCP (Traefik CRDs)
+  - apiGroups: ["traefik.io", "traefik.containo.us"]
+    resources: ["ingressroutes", "ingressroutetcps", "middlewares"]
+    verbs: ["get", "list", "watch"]
+  # Certificate (cert-manager)
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates"]
+    verbs: ["get", "list", "watch"]
+  # Eventos del cluster (para alertas downstream)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cluster-watcher.fullname" . }}-reader
+  labels:
+    {{- include "cluster-watcher.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "cluster-watcher.fullname" . }}-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "cluster-watcher.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

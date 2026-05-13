@@ -1,0 +1,74 @@
+# ============================================================================
+# Default values for apptolast-rag-query.
+# ============================================================================
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/apptolast/rag-query
+  tag: 0.1.0-SNAPSHOT
+  pullPolicy: IfNotPresent
+
+keel:
+  policy: minor
+  trigger: poll
+  pollSchedule: "@every 30m"
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 384Mi
+  limits:
+    cpu: 500m
+    memory: 768Mi
+
+jvmOpts:
+  initialRAMPercentage: 50
+  maxRAMPercentage: 75
+
+service:
+  port: 80
+  targetPort: 8082
+
+# Postgres + pgvector. En cluster: postgres-vector.n8n.svc.cluster.local:5432
+database:
+  url: "jdbc:postgresql://postgres-vector.n8n.svc.cluster.local:5432/rag"
+  userSecret:
+    name: rag-query-db
+    userKey: username
+    passwordKey: password
+
+# OpenAI API key — DEBE venir de Passbolt → Secret externo. NUNCA inline.
+openai:
+  apiKeySecret:
+    name: rag-query-openai
+    key: api-key
+
+# Confidence threshold y top-K.
+config:
+  topK: 5
+  minScore: 0.60
+  embeddingsModel: text-embedding-3-small
+  embeddingDimension: 1536
+
+healthcheck:
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 45
+    periodSeconds: 15
+    timeoutSeconds: 5
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+serviceAccount:
+  create: true
+  name: rag-query
+
+tolerations: []
+nodeSelector: {}
+affinity: {}

@@ -30,10 +30,11 @@ class PassboltApiClient(
 
     override fun listSecretsMetadata(forUserSub: String): List<Secret> {
         return try {
-            // TODO Wave-D D4: replace stub when Passbolt API contract confirmed.
-            // El endpoint nativo es `/resources.json?api-version=v2`. Necesita
-            // GPG-signed auth flow (no JWT simple) — ver docs/services/passbolt.md
-            // por crear. Por ahora devolvemos lista vacía sin tocar red.
+            // NOTE: stub intencional hasta Wave-D D4. El endpoint nativo es
+            // /resources.json?api-version=v2 y requiere GPG-signed auth flow
+            // (no JWT simple). Hasta que Passbolt esté desplegado con un token
+            // de testing, devolvemos lista vacía — comportamiento conforme con
+            // anti-hallucination policy.
             log.debug("listSecretsMetadata for {} — stub (D3)", forUserSub)
             emptyList()
         } catch (ex: RestClientException) {

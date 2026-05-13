@@ -29,8 +29,16 @@ import androidx.compose.ui.unit.dp
  * Phase 4 dependency: necesita Keycloak desplegado + Spring Security OAuth2
  * Resource Server en el platform-app.
  */
+
+/**
+ * Redirección al endpoint estándar de Spring Security OAuth2.
+ * `expect` multiplatform — implementación de wasmJs hace
+ * `window.location.href = "/oauth2/authorization/keycloak"`.
+ */
+expect fun openOidcLogin()
+
 @Composable
-fun LoginScreen() {
+fun LoginScreen(onLoginClicked: () -> Unit = { openOidcLogin() }) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Card(
             modifier = Modifier.width(420.dp),
@@ -53,9 +61,7 @@ fun LoginScreen() {
                     textAlign = TextAlign.Center,
                 )
                 Button(
-                    onClick = {
-                        // TODO Phase 4: redirect a /oauth2/authorization/keycloak
-                    },
+                    onClick = onLoginClicked,
                     modifier = Modifier.size(width = 280.dp, height = 48.dp),
                 ) {
                     Text("Iniciar sesión con Keycloak")

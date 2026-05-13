@@ -28,7 +28,8 @@ subprojects {
         maven("https://repo.spring.io/milestone")
     }
 
-    java {
+    // Java toolchain — configurado vía extensión explícita (Gradle 9 prefiere esto a `java {}` dentro de subprojects).
+    extensions.configure<JavaPluginExtension> {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(21))
         }

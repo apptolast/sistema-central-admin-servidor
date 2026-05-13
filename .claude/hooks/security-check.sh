@@ -60,6 +60,18 @@ if [ -n "$CONTENT" ]; then
     echo "🔒 Posible JWT literal en el contenido. Si es para test, usa un placeholder." >&2
     exit 2
   fi
+
+  # Docker Hub token (subido como repository secret 2026-05-13)
+  if echo "$CONTENT" | grep -qE 'DOCKERHUB_TOKEN\s*[:=]\s*["'"'"']?[a-zA-Z0-9]{20,}'; then
+    echo "🔒 DOCKERHUB_TOKEN literal detectado. Usa \${{ secrets.DOCKERHUB_TOKEN }} en workflows." >&2
+    exit 2
+  fi
+
+  # GitHub Personal Access Tokens (ghp_, gho_, ghs_, ghr_)
+  if echo "$CONTENT" | grep -qE 'gh[psor]_[A-Za-z0-9]{30,}'; then
+    echo "🔒 GitHub Personal Access Token detectado en el contenido." >&2
+    exit 2
+  fi
 fi
 
 exit 0

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "_comment": "Repo apptolast/sistema-central-admin-servidor + repos de la org AppToLast"
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "_comment": "Documentación actualizada de Spring Boot, Kotlin, fabric8, Compose Multiplatform, etc."
+    }
+  }
+}

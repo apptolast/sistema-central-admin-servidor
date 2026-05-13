@@ -1,0 +1,187 @@
+# ============================================================================
+# Version catalog — fuente única de verdad para versiones de toda la plataforma.
+# Referenciado desde build.gradle.kts via `libs.<alias>`.
+# Última revisión: 2026-05-13.
+# ============================================================================
+
+[versions]
+# Core
+kotlin                    = "2.3.21"
+ktor                      = "3.4.1"
+ksp                       = "2.3.21-1.0.21"
+springBoot                = "3.5.4"
+springDependencyMgmt      = "1.1.7"
+springModulith            = "2.0.1"
+springCloud               = "2024.0.0"
+springAi                  = "1.1.0"
+
+# Persistence
+flyway                    = "10.21.0"
+postgresql                = "42.7.4"
+hibernate                 = "6.6.4.Final"
+pgvector                  = "0.1.6"
+
+# Kubernetes / cloud
+fabric8                   = "7.0.1"
+hetznerClient             = "3.6.0"
+
+# Messaging
+nats                      = "2.20.5"
+grpc                      = "1.71.0"
+grpcKotlin                = "1.4.1"
+protobuf                  = "4.29.3"
+
+# Auth
+keycloakAdminClient       = "26.0.4"
+nimbusJoseJwt             = "9.40"
+
+# Testing
+junit                     = "5.11.4"
+kotest                    = "5.9.1"
+mockk                     = "1.13.13"
+testcontainers            = "1.20.4"
+archunit                  = "1.3.0"
+
+# Quality
+ktlint                    = "12.1.1"
+detekt                    = "1.23.7"
+spotless                  = "7.0.2"
+jacoco                    = "0.8.12"
+owaspDependencyCheck      = "11.1.0"
+
+# Observability
+opentelemetry             = "1.45.0"
+micrometer                = "1.14.2"
+logstashLogbackEncoder    = "8.0"
+
+# Utilities
+arrow                     = "1.2.4"
+jackson                   = "2.18.2"
+slf4j                     = "2.0.16"
+
+[libraries]
+# Kotlin
+kotlin-stdlib              = { module = "org.jetbrains.kotlin:kotlin-stdlib",                version.ref = "kotlin" }
+kotlin-reflect             = { module = "org.jetbrains.kotlin:kotlin-reflect",               version.ref = "kotlin" }
+kotlinx-coroutines-core    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",     version       = "1.10.1" }
+kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor",  version       = "1.10.1" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json",  version       = "1.7.3" }
+
+# Spring Boot
+springBoot-starter           = { module = "org.springframework.boot:spring-boot-starter",                    version.ref = "springBoot" }
+springBoot-starter-web       = { module = "org.springframework.boot:spring-boot-starter-web",                version.ref = "springBoot" }
+springBoot-starter-webflux   = { module = "org.springframework.boot:spring-boot-starter-webflux",            version.ref = "springBoot" }
+springBoot-starter-actuator  = { module = "org.springframework.boot:spring-boot-starter-actuator",           version.ref = "springBoot" }
+springBoot-starter-data-jpa  = { module = "org.springframework.boot:spring-boot-starter-data-jpa",           version.ref = "springBoot" }
+springBoot-starter-validation= { module = "org.springframework.boot:spring-boot-starter-validation",         version.ref = "springBoot" }
+springBoot-starter-security  = { module = "org.springframework.boot:spring-boot-starter-security",           version.ref = "springBoot" }
+springBoot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server", version.ref = "springBoot" }
+springBoot-starter-test      = { module = "org.springframework.boot:spring-boot-starter-test",               version.ref = "springBoot" }
+
+# Spring Modulith
+springModulith-events-api    = { module = "org.springframework.modulith:spring-modulith-events-api",         version.ref = "springModulith" }
+springModulith-events-core   = { module = "org.springframework.modulith:spring-modulith-events-core",        version.ref = "springModulith" }
+springModulith-events-jpa    = { module = "org.springframework.modulith:spring-modulith-events-jpa",         version.ref = "springModulith" }
+springModulith-observability = { module = "org.springframework.modulith:spring-modulith-observability",      version.ref = "springModulith" }
+springModulith-starter-core  = { module = "org.springframework.modulith:spring-modulith-starter-core",       version.ref = "springModulith" }
+springModulith-starter-jpa   = { module = "org.springframework.modulith:spring-modulith-starter-jpa",        version.ref = "springModulith" }
+springModulith-starter-test  = { module = "org.springframework.modulith:spring-modulith-starter-test",       version.ref = "springModulith" }
+
+# Spring AI
+springAi-pgvector            = { module = "org.springframework.ai:spring-ai-starter-vector-store-pgvector",  version.ref = "springAi" }
+springAi-openai              = { module = "org.springframework.ai:spring-ai-starter-model-openai",           version.ref = "springAi" }
+springAi-rag                 = { module = "org.springframework.ai:spring-ai-rag",                            version.ref = "springAi" }
+
+# Persistence
+flyway-core                  = { module = "org.flywaydb:flyway-core",                                        version.ref = "flyway" }
+flyway-postgresql            = { module = "org.flywaydb:flyway-database-postgresql",                         version.ref = "flyway" }
+postgresql-driver            = { module = "org.postgresql:postgresql",                                       version.ref = "postgresql" }
+pgvector-java                = { module = "com.pgvector:pgvector",                                           version.ref = "pgvector" }
+
+# Kubernetes
+fabric8-kubernetes-client    = { module = "io.fabric8:kubernetes-client",                                    version.ref = "fabric8" }
+fabric8-kubernetes-httpclient-jdk = { module = "io.fabric8:kubernetes-httpclient-jdk",                       version.ref = "fabric8" }
+
+# Hetzner
+hetzner-cloud-java           = { module = "me.tomsdevsn:hetznercloud-api",                                   version.ref = "hetznerClient" }
+
+# Messaging
+nats-jnats                   = { module = "io.nats:jnats",                                                   version.ref = "nats" }
+grpc-kotlin-stub             = { module = "io.grpc:grpc-kotlin-stub",                                        version.ref = "grpcKotlin" }
+grpc-protobuf                = { module = "io.grpc:grpc-protobuf",                                           version.ref = "grpc" }
+
+# Auth
+keycloak-admin-client        = { module = "org.keycloak:keycloak-admin-client",                              version.ref = "keycloakAdminClient" }
+nimbus-jose-jwt              = { module = "com.nimbusds:nimbus-jose-jwt",                                    version.ref = "nimbusJoseJwt" }
+
+# Observability
+opentelemetry-sdk            = { module = "io.opentelemetry:opentelemetry-sdk",                              version.ref = "opentelemetry" }
+micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus",                  version.ref = "micrometer" }
+logstash-logback-encoder     = { module = "net.logstash.logback:logstash-logback-encoder",                   version.ref = "logstashLogbackEncoder" }
+
+# Utilities
+arrow-core                   = { module = "io.arrow-kt:arrow-core",                                          version.ref = "arrow" }
+jackson-module-kotlin        = { module = "com.fasterxml.jackson.module:jackson-module-kotlin",              version.ref = "jackson" }
+jackson-datatype-jsr310      = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310",          version.ref = "jackson" }
+slf4j-api                    = { module = "org.slf4j:slf4j-api",                                             version.ref = "slf4j" }
+
+# Testing
+junit-jupiter                = { module = "org.junit.jupiter:junit-jupiter",                                 version.ref = "junit" }
+kotest-runner-junit5         = { module = "io.kotest:kotest-runner-junit5",                                  version.ref = "kotest" }
+kotest-assertions-core       = { module = "io.kotest:kotest-assertions-core",                                version.ref = "kotest" }
+mockk                        = { module = "io.mockk:mockk",                                                  version.ref = "mockk" }
+mockk-spring                 = { module = "com.ninja-squad:springmockk",                                     version       = "4.0.2" }
+testcontainers-junit         = { module = "org.testcontainers:junit-jupiter",                                version.ref = "testcontainers" }
+testcontainers-postgresql    = { module = "org.testcontainers:postgresql",                                   version.ref = "testcontainers" }
+archunit-junit5              = { module = "com.tngtech.archunit:archunit-junit5",                            version.ref = "archunit" }
+
+[plugins]
+kotlin-jvm                  = { id = "org.jetbrains.kotlin.jvm",                          version.ref = "kotlin" }
+kotlin-spring               = { id = "org.jetbrains.kotlin.plugin.spring",                version.ref = "kotlin" }
+kotlin-jpa                  = { id = "org.jetbrains.kotlin.plugin.jpa",                   version.ref = "kotlin" }
+kotlin-serialization        = { id = "org.jetbrains.kotlin.plugin.serialization",         version.ref = "kotlin" }
+springBoot                  = { id = "org.springframework.boot",                          version.ref = "springBoot" }
+springDependencyMgmt        = { id = "io.spring.dependency-management",                   version.ref = "springDependencyMgmt" }
+ktlint                      = { id = "org.jlleitschuh.gradle.ktlint",                     version.ref = "ktlint" }
+detekt                      = { id = "io.gitlab.arturbosch.detekt",                       version.ref = "detekt" }
+spotless                    = { id = "com.diffplug.spotless",                             version.ref = "spotless" }
+owaspDependencyCheck        = { id = "org.owasp.dependencycheck",                         version.ref = "owaspDependencyCheck" }
+
+[bundles]
+spring-base = [
+  "springBoot-starter",
+  "springBoot-starter-actuator",
+  "springBoot-starter-validation",
+  "kotlinx-coroutines-core",
+  "jackson-module-kotlin",
+  "jackson-datatype-jsr310",
+]
+spring-web = [
+  "springBoot-starter-web",
+]
+spring-data = [
+  "springBoot-starter-data-jpa",
+  "flyway-core",
+  "flyway-postgresql",
+  "postgresql-driver",
+]
+spring-modulith = [
+  "springModulith-starter-core",
+  "springModulith-starter-jpa",
+  "springModulith-events-api",
+  "springModulith-events-core",
+  "springModulith-events-jpa",
+  "springModulith-observability",
+]
+testing = [
+  "springBoot-starter-test",
+  "junit-jupiter",
+  "kotest-runner-junit5",
+  "kotest-assertions-core",
+  "mockk",
+  "mockk-spring",
+  "testcontainers-junit",
+  "testcontainers-postgresql",
+  "archunit-junit5",
+  "springModulith-starter-test",
+]

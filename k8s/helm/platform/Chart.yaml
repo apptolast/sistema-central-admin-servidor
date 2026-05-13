@@ -1,0 +1,29 @@
+apiVersion: v2
+name: apptolast-platform
+description: |
+  Internal Developer Platform de AppToLast.
+  Monolito modular Spring Modulith + Spring Boot 3.5 + Kotlin 2.3 + JDK 21.
+  Cubre 6 bounded contexts: inventory, secrets, observability, automation, knowledge, identity.
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0-SNAPSHOT"
+
+home: https://github.com/apptolast/sistema-central-admin-servidor
+sources:
+  - https://github.com/apptolast/sistema-central-admin-servidor
+
+maintainers:
+  - name: Pablo Hurtado
+    email: pablohurtadohg@gmail.com
+
+keywords:
+  - idp
+  - apptolast
+  - spring-modulith
+  - kotlin
+  - platform
+
+annotations:
+  category: PlatformEngineering
+  licenses: Internal

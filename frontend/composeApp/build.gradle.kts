@@ -1,5 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
     kotlin("multiplatform") version "2.3.21"
@@ -31,6 +30,11 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+            // Ktor multiplatform: las APIs y modelos viven en commonMain a partir de 3.x.
+            // El engine concreto (js para wasm) va en wasmJsMain.
+            implementation("io.ktor:ktor-client-core:3.4.1")
+            implementation("io.ktor:ktor-client-content-negotiation:3.4.1")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.4.1")
         }
 
         commonTest.dependencies {
@@ -38,10 +42,7 @@ kotlin {
         }
 
         wasmJsMain.dependencies {
-            implementation("io.ktor:ktor-client-core:3.4.1")
             implementation("io.ktor:ktor-client-js:3.4.1")
-            implementation("io.ktor:ktor-client-content-negotiation:3.4.1")
-            implementation("io.ktor:ktor-serialization-kotlinx-json:3.4.1")
         }
     }
 }

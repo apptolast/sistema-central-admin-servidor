@@ -54,6 +54,32 @@ data class ServiceDto(
     )
 }
 
+/**
+ * Detalle de Pod enriquecido con runbooks relevantes (vía knowledge module).
+ *
+ * Backend: `GET /api/v1/inventory/pods/{ns}/{name}` ahora devuelve este wrapper
+ * (cambio aditivo en commit 85ca3c7). El campo `pod` mantiene los mismos campos
+ * que [PodDto] para que cualquier cliente legado siga funcionando.
+ *
+ * Regla anti-hallucination: `relatedRunbooks` puede estar vacío si knowledge no
+ * encontró evidencia o estaba caído. La UI NO debe mostrar "no hay runbooks";
+ * simplemente oculta la sección.
+ */
+@Serializable
+data class PodDetailDto(
+    val pod: PodDto,
+    val relatedRunbooks: List<RunbookCitationDto> = emptyList(),
+)
+
+@Serializable
+data class RunbookCitationDto(
+    val sourcePath: String,
+    val section: String,
+    val sha: String,
+    /** Cita formato canónico `[source: path#section@sha]`. */
+    val citation: String,
+)
+
 @Serializable
 data class CertificateDto(
     val namespace: String,

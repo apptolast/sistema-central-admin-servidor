@@ -7,7 +7,69 @@ Adherencia a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-### Added — Phases 2-5 skeletons + frontend (2026-05-13, branch `feat/marathon-2026-05-13`)
+### Added — Marathon mega-session 2026-05-13 (cierre Phase 3 + Phase 5, scaffold Phase 4, P0 Phase 6, CI/CD para 5 imágenes)
+
+- **Wave-C C4** (c1aa386) — PodDetailScreen frontend wired al endpoint real
+  `/api/v1/inventory/pods/{ns}/{name}`. PodDetailDto + RunbookCitationDto +
+  getPodDetail() en InventoryClient con try/catch defensivo. Sección
+  "Runbooks relacionados" sólo renderizada si `relatedRunbooks.isNotEmpty()`
+  (regla anti-hallucination).
+- **Wave-C C5** (941099b) — E2E test `InventoryKnowledgeFlowE2ETest` con 6
+  escenarios anti-hallucination: cited returns runbooks, LOW_NO_EVIDENCE
+  empty, 5xx empty (NUNCA propaga), malformed citation filtered, pod 404 +
+  zero RAG calls, RAG 404 returns empty runbooks.
+- **Wave-E E2** (2fe7fe3) — Audit log persistence: Flyway V2 migration,
+  AuditEntry + AuditOutcome sealed (AcceptedOk/AcceptedFail/Rejected/TimedOut),
+  AuditLogRepository port, JPA adapter, wire SafeOpsKernel → cada
+  invocación persiste exactamente 1 entry, audit failures NO bloquean
+  ejecución (log.error + continue).
+- **Wave-E E3** (f3a99cb) — REST `GET /api/v1/automation/audit` paginado
+  con filtros (from/to/commandKind/outcome/userId). MAX_SIZE=200 cap.
+  AuditQueryService + AuditController + AuditEntryDto / AuditPageDto.
+  + `GET /api/v1/automation/audit/{id}` para detalle full.
+- **Wave-E E4** (7423794) — Frontend AuditLogScreen + CronjobBoardScreen
+  wired al backend. AutomationClient (Ktor) + AuditPageDto/AuditEntryDto/
+  AutomationRunRequest sealed con classDiscriminator="kind". OutcomeBadge
+  color-coded (#00E676 primary, error, warning, tertiary). CronjobBoard
+  trigger button hace POST real /api/v1/automation/run. SnackbarHost
+  muestra resultado real (incluido errores raw — anti-hallucination).
+- **Wave-D D1** (966950b) — Keycloak 26.6 Helm chart en `k8s/helm/keycloak/`
+  con realm `apptolast` autoimportado (3 realm roles + 2 clients
+  idp-frontend public PKCE + idp-backend confidential bearer-only).
+  start-dev mode (D8 promociona a start). H2 file por default, Postgres
+  externo opcional. IngressRoute Traefik para auth.apptolast.com con
+  cert-manager. helm lint + template ok. `docs/services/keycloak.md`.
+- **Wave-D D2** (a1c8bf3) — Identity OIDC Spring Security Resource Server.
+  IdentityProperties (identity.oidc.enabled toggle para dev), SecurityConfig
+  con jwt() + KeycloakJwtConverter, JwtPrincipalMapper (object) que mapea
+  JWT → Principal de api/ con regla anti-hallucination: sin claim de roles
+  → emptySet (NUNCA invents VIEWER). 8 tests JwtPrincipalMapperTest.
+- **Wave-D D3** (c598c2d) — Secrets Passbolt adapter scaffold. PassboltProperties,
+  PassboltApiClient (scaffold — devuelve empty hasta D4 wire real),
+  StubPassboltClient (activo si url blank — NUNCA inventa secrets),
+  PassboltConfig selector. 9 PassboltConfigTest. Fixes paralelos:
+  `.gitignore` `secrets/` → `/secrets/` (no bloquear módulo legítimo);
+  security-check hook whitelist `/platform/secrets/src/`. Módulo entra al
+  repo por primera vez.
+- **Wave-F P0** (ddf46b6) — Runbooks operacionales para hardening:
+  `docs/runbooks/RB-50_LONGHORN_OFFSITE_BACKUP.md` (Hetzner Storage Box,
+  DR drill cada 30 días, RecurringJob diario),
+  `docs/runbooks/RB-51_POSTGRES_PGDUMP.md` (8 DBs inventariadas, schedule,
+  DR drill mensual),
+  `docs/security/network-policies.md` (matriz 11 pares allowed, apply
+  procedure 1-by-1, rollback, 5 antipatterns).
+- **CI/CD V** (fb98d4f) — `.github/workflows/ci.yml` extendido:
+  rag-ingestor-build + rag-query-build + frontend-build (compileKotlinWasmJs
+  + wasmJsBrowserDistribution artifact). helm-lint para keycloak +
+  rag-ingestor + rag-query + frontend. docker-rag-ingestor +
+  docker-rag-query + docker-frontend jobs con GHCR primary + DOCKERHUB
+  mirror condicional. docker-cluster-watcher recibe mirror también.
+  `frontend/Dockerfile` multi-stage (gradle build + nginx:1.27-alpine
+  como user nginx UID 101). `frontend/nginx.conf` con MIME wasm explícito,
+  gzip, SPA fallback, cache-control. `k8s/helm/frontend/` chart completo.
+- **`docs/progress/2026-W20-marathon-mega-session.md`** — log de la sesión.
+
+### Antes — Phases 2-5 skeletons + frontend (2026-05-13, branch `feat/marathon-2026-05-13`)
 
 - **`frontend/composeApp/`** — Compose Multiplatform Web (wasmJs target) bootstrap:
   - `settings.gradle.kts` + `composeApp/build.gradle.kts` (Compose MP 1.10.2, Kotlin 2.3.21, Ktor 3.4.1, kotlinx-serialization).

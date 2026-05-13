@@ -1,0 +1,60 @@
+# ============================================================================
+# Default values for frontend (Wave-E V4).
+# ============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/apptolast/frontend
+  tag: 0.1.0-SNAPSHOT
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  host: idp.apptolast.com
+  certIssuer: cloudflare-clusterissuer
+  className: traefik
+
+serviceAccount:
+  create: true
+  name: frontend
+
+# Probes — nginx responde al / con 200.
+healthcheck:
+  liveness:
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    path: /
+    initialDelaySeconds: 2
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+keel:
+  policy: minor
+  trigger: poll
+  pollSchedule: "@every 30m"
+
+tolerations: []
+nodeSelector: {}
+affinity: {}

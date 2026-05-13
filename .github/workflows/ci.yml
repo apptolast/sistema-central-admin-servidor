@@ -144,6 +144,110 @@ jobs:
           retention-days: 14
 
   # ─────────────────────────────────────────────────────────────────────────
+  # rag-ingestor (microservicio extraído — Phase 3)
+  # ─────────────────────────────────────────────────────────────────────────
+  rag-ingestor-build:
+    name: rag-ingestor · build + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/rag-ingestor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Stage gradle wrapper (reusa el del monolito)
+        run: |
+          cp -r ../../platform/gradle .
+          cp ../../platform/gradlew .
+          cp ../../platform/gradlew.bat .
+          chmod +x gradlew
+      - name: Build + test
+        run: ./gradlew build --no-daemon
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-rag-ingestor
+          path: |
+            services/rag-ingestor/build/reports/tests
+            services/rag-ingestor/build/test-results
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # rag-query (microservicio extraído — Phase 3 facade Kotlin)
+  # ─────────────────────────────────────────────────────────────────────────
+  rag-query-build:
+    name: rag-query · build + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/rag-query
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Stage gradle wrapper (reusa el del monolito)
+        run: |
+          cp -r ../../platform/gradle .
+          cp ../../platform/gradlew .
+          cp ../../platform/gradlew.bat .
+          chmod +x gradlew
+      - name: Build + test
+        run: ./gradlew build --no-daemon
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-rag-query
+          path: |
+            services/rag-query/build/reports/tests
+            services/rag-query/build/test-results
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # frontend Compose Multiplatform Web (Wasm)
+  # ─────────────────────────────────────────────────────────────────────────
+  frontend-build:
+    name: frontend · compile Wasm
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Stage gradle wrapper (reusa el del monolito)
+        run: |
+          cp -r ../platform/gradle .
+          cp ../platform/gradlew .
+          cp ../platform/gradlew.bat .
+          chmod +x gradlew
+      - name: Compile Wasm
+        run: ./gradlew compileKotlinWasmJs --no-daemon
+      - name: Build production distribution
+        run: ./gradlew wasmJsBrowserDistribution --no-daemon
+      - name: Upload Wasm dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/composeApp/build/dist/wasmJs/productionExecutable/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Helm charts (lint + template)
   # ─────────────────────────────────────────────────────────────────────────
   helm-lint:
@@ -165,6 +269,22 @@ jobs:
         run: helm lint k8s/helm/cluster-watcher
       - name: Template cluster-watcher chart
         run: helm template cluster-watcher k8s/helm/cluster-watcher
+      - name: Lint keycloak chart
+        run: helm lint k8s/helm/keycloak
+      - name: Template keycloak chart
+        run: helm template keycloak k8s/helm/keycloak
+      - name: Lint rag-ingestor chart
+        run: helm lint k8s/helm/rag-ingestor
+      - name: Template rag-ingestor chart
+        run: helm template rag-ingestor k8s/helm/rag-ingestor
+      - name: Lint rag-query chart
+        run: helm lint k8s/helm/rag-query
+      - name: Template rag-query chart
+        run: helm template rag-query k8s/helm/rag-query
+      - name: Lint frontend chart
+        run: helm lint k8s/helm/frontend
+      - name: Template frontend chart
+        run: helm template frontend k8s/helm/frontend
 
   # ─────────────────────────────────────────────────────────────────────────
   # OWASP dependency check (security)
@@ -290,6 +410,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log into Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Determine image tag
         id: tag
         run: |
@@ -310,3 +437,198 @@ jobs:
         run: |
           docker tag ghcr.io/apptolast/cluster-watcher:${{ steps.tag.outputs.tag }} ghcr.io/apptolast/cluster-watcher:latest
           docker push ghcr.io/apptolast/cluster-watcher:latest
+
+      - name: Mirror to Docker Hub if secret set
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          docker tag ghcr.io/apptolast/cluster-watcher:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-cluster-watcher:${{ steps.tag.outputs.tag }}
+          docker push ${DH_USER}/apptolast-cluster-watcher:${{ steps.tag.outputs.tag }}
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            docker tag ghcr.io/apptolast/cluster-watcher:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-cluster-watcher:latest
+            docker push ${DH_USER}/apptolast-cluster-watcher:latest
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # docker images: rag-ingestor + rag-query + frontend (push solo main/develop)
+  # ─────────────────────────────────────────────────────────────────────────
+  docker-rag-ingestor:
+    name: docker · rag-ingestor
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [rag-ingestor-build, helm-lint]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    defaults:
+      run:
+        working-directory: services/rag-ingestor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Stage gradle wrapper
+        run: |
+          cp -r ../../platform/gradle .
+          cp ../../platform/gradlew .
+          cp ../../platform/gradlew.bat .
+          chmod +x gradlew
+      - name: Log into GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log into Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "tag=prod-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=dev-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build OCI image (bootBuildImage)
+        run: ./gradlew bootBuildImage --imageName=ghcr.io/apptolast/rag-ingestor:${{ steps.tag.outputs.tag }} --no-daemon
+      - name: Push GHCR image
+        run: docker push ghcr.io/apptolast/rag-ingestor:${{ steps.tag.outputs.tag }}
+      - name: Tag :latest if main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker tag ghcr.io/apptolast/rag-ingestor:${{ steps.tag.outputs.tag }} ghcr.io/apptolast/rag-ingestor:latest
+          docker push ghcr.io/apptolast/rag-ingestor:latest
+      - name: Mirror to Docker Hub if secret set
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          docker tag ghcr.io/apptolast/rag-ingestor:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-rag-ingestor:${{ steps.tag.outputs.tag }}
+          docker push ${DH_USER}/apptolast-rag-ingestor:${{ steps.tag.outputs.tag }}
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            docker tag ghcr.io/apptolast/rag-ingestor:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-rag-ingestor:latest
+            docker push ${DH_USER}/apptolast-rag-ingestor:latest
+          fi
+
+  docker-rag-query:
+    name: docker · rag-query
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [rag-query-build, helm-lint]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    defaults:
+      run:
+        working-directory: services/rag-query
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Stage gradle wrapper
+        run: |
+          cp -r ../../platform/gradle .
+          cp ../../platform/gradlew .
+          cp ../../platform/gradlew.bat .
+          chmod +x gradlew
+      - name: Log into GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log into Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "tag=prod-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=dev-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build OCI image (bootBuildImage)
+        run: ./gradlew bootBuildImage --imageName=ghcr.io/apptolast/rag-query:${{ steps.tag.outputs.tag }} --no-daemon
+      - name: Push GHCR image
+        run: docker push ghcr.io/apptolast/rag-query:${{ steps.tag.outputs.tag }}
+      - name: Tag :latest if main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker tag ghcr.io/apptolast/rag-query:${{ steps.tag.outputs.tag }} ghcr.io/apptolast/rag-query:latest
+          docker push ghcr.io/apptolast/rag-query:latest
+      - name: Mirror to Docker Hub if secret set
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          docker tag ghcr.io/apptolast/rag-query:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-rag-query:${{ steps.tag.outputs.tag }}
+          docker push ${DH_USER}/apptolast-rag-query:${{ steps.tag.outputs.tag }}
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            docker tag ghcr.io/apptolast/rag-query:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-rag-query:latest
+            docker push ${DH_USER}/apptolast-rag-query:latest
+          fi
+
+  docker-frontend:
+    name: docker · frontend (Wasm + nginx)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [frontend-build, helm-lint]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log into GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log into Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "tag=prod-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=dev-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build + push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/apptolast/frontend:${{ steps.tag.outputs.tag }}
+            ${{ github.ref == 'refs/heads/main' && 'ghcr.io/apptolast/frontend:latest' || '' }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+      - name: Mirror to Docker Hub if secret set
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          docker pull ghcr.io/apptolast/frontend:${{ steps.tag.outputs.tag }}
+          docker tag ghcr.io/apptolast/frontend:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-frontend:${{ steps.tag.outputs.tag }}
+          docker push ${DH_USER}/apptolast-frontend:${{ steps.tag.outputs.tag }}
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            docker tag ghcr.io/apptolast/frontend:${{ steps.tag.outputs.tag }} ${DH_USER}/apptolast-frontend:latest
+            docker push ${DH_USER}/apptolast-frontend:latest
+          fi

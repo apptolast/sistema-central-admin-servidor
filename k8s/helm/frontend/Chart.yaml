@@ -1,0 +1,28 @@
+apiVersion: v2
+name: frontend
+description: |
+  Compose Multiplatform Web (Kotlin/Wasm) frontend del IDP de AppToLast.
+  Servido por nginx 1.27 con SPA fallback + gzip + cache headers agresivos.
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0-SNAPSHOT"
+
+home: https://github.com/apptolast/sistema-central-admin-servidor
+sources:
+  - https://github.com/apptolast/sistema-central-admin-servidor
+
+maintainers:
+  - name: Pablo Hurtado
+    email: pablohurtadohg@gmail.com
+
+keywords:
+  - frontend
+  - compose-multiplatform
+  - wasm
+  - idp
+  - apptolast
+
+annotations:
+  category: PlatformEngineering
+  licenses: Internal

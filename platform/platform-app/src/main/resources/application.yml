@@ -35,6 +35,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    baseline-on-migrate: true
 
   # ── Spring Modulith event registry ───────────────────────────────────────
   # Modulith mantiene una tabla `event_publication` para el registry de
@@ -44,7 +45,6 @@ spring:
       jdbc:
         schema-initialization:
           enabled: true
-    baseline-on-migrate: true
 
   # ── Threads ──────────────────────────────────────────────────────────────
   threads:

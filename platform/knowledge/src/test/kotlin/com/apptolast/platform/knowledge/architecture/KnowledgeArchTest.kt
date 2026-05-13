@@ -21,4 +21,23 @@ class KnowledgeArchTest {
             )
             .check(classes)
     }
+
+    @Test
+    fun `application port must not depend on spring or infrastructure`() {
+        noClasses()
+            .that().resideInAPackage("..knowledge.application.port..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                "org.springframework..",
+                "..knowledge.infrastructure..",
+            )
+            .check(classes)
+    }
+
+    @Test
+    fun `infrastructure must not be referenced from application port or domain`() {
+        noClasses()
+            .that().resideInAnyPackage("..knowledge.domain..", "..knowledge.application.port..")
+            .should().dependOnClassesThat().resideInAPackage("..knowledge.infrastructure..")
+            .check(classes)
+    }
 }

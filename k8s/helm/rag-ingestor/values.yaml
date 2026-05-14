@@ -65,6 +65,7 @@ resources:
 jvmOpts:
   initialRAMPercentage: 50
   maxRAMPercentage: 75
+  threadCount: 50
 
 # Volumen ephemeral para clonar el repo. Se descarta al final del Job.
 workdir:

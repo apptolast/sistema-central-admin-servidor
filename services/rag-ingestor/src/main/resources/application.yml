@@ -39,6 +39,7 @@ server:
 rag-ingestor:
   repo-url: ${RAG_INGESTOR_REPO_URL:${REPO_URL:https://github.com/apptolast/sistema-central-admin-servidor.git}}
   branch: ${RAG_INGESTOR_REPO_BRANCH:${REPO_BRANCH:main}}
+  repo-token: ${RAG_INGESTOR_REPO_TOKEN:}
   workdir: ${RAG_INGESTOR_WORKDIR:${WORKDIR:/var/lib/rag-ingestor/repo}}
   include-paths: ${RAG_INGESTOR_INCLUDE_PATHS:docs/**/*.md,cluster-ops/audit/RUNBOOKS/**/*.md,*.md}
   poll-interval: ${POLL_INTERVAL:PT5M}

@@ -4,6 +4,7 @@ metadata:
   name: {{ include "rag-query.fullname" . }}
   labels:
     {{- include "rag-query.labels" . | nindent 4 }}
+    apptolast.dev/image-refresh: "enabled"
   annotations:
     keel.sh/policy: {{ .Values.keel.policy | quote }}
     keel.sh/trigger: {{ .Values.keel.trigger | quote }}

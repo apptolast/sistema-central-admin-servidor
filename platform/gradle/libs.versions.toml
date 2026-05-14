@@ -57,6 +57,7 @@ logstashLogbackEncoder    = "8.0"
 # Utilities
 arrow                     = "1.2.4"
 jackson                   = "2.18.2"
+jgit                      = "7.6.0.202603022253-r"
 slf4j                     = "2.0.16"
 
 [libraries]
@@ -123,6 +124,7 @@ logstash-logback-encoder     = { module = "net.logstash.logback:logstash-logback
 arrow-core                   = { module = "io.arrow-kt:arrow-core",                                          version.ref = "arrow" }
 jackson-module-kotlin        = { module = "com.fasterxml.jackson.module:jackson-module-kotlin",              version.ref = "jackson" }
 jackson-datatype-jsr310      = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310",          version.ref = "jackson" }
+jgit                         = { module = "org.eclipse.jgit:org.eclipse.jgit",                               version.ref = "jgit" }
 slf4j-api                    = { module = "org.slf4j:slf4j-api",                                             version.ref = "slf4j" }
 
 # Testing

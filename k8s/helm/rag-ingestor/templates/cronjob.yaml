@@ -58,6 +58,8 @@ spec:
               env:
                 - name: HOME
                   value: /tmp
+                - name: BPL_JVM_THREAD_COUNT
+                  value: {{ .Values.jvmOpts.threadCount | quote }}
                 - name: RAG_INGESTOR_RUN_ONCE
                   value: "true"
                 - name: RAG_INGESTOR_SCHEDULING_ENABLED

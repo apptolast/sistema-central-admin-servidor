@@ -26,7 +26,7 @@ if ! command -v helm >/dev/null 2>&1; then
   exit 1
 fi
 
-for chart in platform cluster-watcher keycloak rag-ingestor rag-query frontend; do
+for chart in platform cluster-watcher keycloak rag-ingestor rag-query frontend image-refresh; do
   helm lint "$ROOT/k8s/helm/$chart"
   helm template "$chart" "$ROOT/k8s/helm/$chart" >/dev/null
 done

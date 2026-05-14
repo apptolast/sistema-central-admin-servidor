@@ -19,6 +19,7 @@ dependencies {
     // Spring AI + embeddings
     implementation(libs.springAi.openai)
     implementation(libs.springAi.pgvector)
+    implementation(libs.jgit)
 
     runtimeOnly(libs.flyway.postgresql)
     runtimeOnly(libs.pgvector.java)

@@ -4,6 +4,7 @@ metadata:
   name: {{ include "apptolast-platform.fullname" . }}
   labels:
     {{- include "apptolast-platform.labels" . | nindent 4 }}
+    apptolast.dev/image-refresh: "enabled"
   annotations:
     keel.sh/policy: {{ .Values.keel.policy | quote }}
     keel.sh/trigger: {{ .Values.keel.trigger | quote }}

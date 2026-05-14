@@ -16,6 +16,9 @@ permissions:
   packages: write
   pull-requests: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # ─────────────────────────────────────────────────────────────────────────
   # platform (monolito Spring Modulith)
@@ -289,6 +292,10 @@ jobs:
         run: helm lint k8s/helm/frontend
       - name: Template frontend chart
         run: helm template frontend k8s/helm/frontend
+      - name: Lint image-refresh chart
+        run: helm lint k8s/helm/image-refresh
+      - name: Template image-refresh chart
+        run: helm template image-refresh k8s/helm/image-refresh
 
   # ─────────────────────────────────────────────────────────────────────────
   # OWASP dependency check (security)

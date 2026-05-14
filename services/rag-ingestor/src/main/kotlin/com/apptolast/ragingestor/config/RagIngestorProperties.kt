@@ -11,6 +11,9 @@ data class RagIngestorProperties(
     /** Branch a seguir. */
     val branch: String = "main",
 
+    /** Token HTTPS opcional para repos privados. Nunca se registra en logs. */
+    val repoToken: String? = null,
+
     /** Directorio local donde se clona el repo (dentro del pod). */
     val workdir: String = "/var/lib/rag-ingestor/repo",
 

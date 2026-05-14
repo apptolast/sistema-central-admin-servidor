@@ -4,6 +4,7 @@ metadata:
   name: {{ include "cluster-watcher.fullname" . }}
   labels:
     {{- include "cluster-watcher.labels" . | nindent 4 }}
+    apptolast.dev/image-refresh: "enabled"
   annotations:
     keel.sh/policy: {{ .Values.keel.policy | quote }}
     keel.sh/trigger: {{ .Values.keel.trigger | quote }}

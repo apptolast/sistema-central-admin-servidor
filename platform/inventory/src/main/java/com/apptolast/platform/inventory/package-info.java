@@ -23,6 +23,9 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Inventory",
-    allowedDependencies = {}
+    allowedDependencies = {
+        "knowledge :: inbound",
+        "knowledge :: model"
+    }
 )
 package com.apptolast.platform.inventory;

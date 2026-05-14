@@ -3,6 +3,8 @@ package com.apptolast.platform.automation.infrastructure
 import com.apptolast.platform.automation.application.port.outbound.CommandExecutor
 import com.apptolast.platform.automation.application.port.outbound.ExecutionOutcome
 import com.apptolast.platform.automation.domain.model.SafeCommand
+import io.fabric8.kubernetes.api.model.batch.v1.CronJob
+import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.utils.Serialization
@@ -15,18 +17,21 @@ import kotlin.system.measureTimeMillis
  *
  * Convierte `SafeCommand` (ya validado por `SafeOpsKernel` + `Whitelist`)
  * en llamadas fabric8 idempotentes y serializa la respuesta como YAML.
- *
- * HelmRead/HelmRollback NO se implementan aquí — requieren helm CLI con
- * argumentos shell-safe, defer a Fase 6 (sandbox ProcessBuilder con list-args).
- * Hasta entonces, lanzan UnsupportedOperationException + audit log.
  */
 class Fabric8CommandExecutor(
     private val client: KubernetesClient,
+    private val helm: HelmCliSandbox = HelmCliSandbox(),
 ) : CommandExecutor {
 
     private val log = LoggerFactory.getLogger(Fabric8CommandExecutor::class.java)
 
     override fun execute(command: SafeCommand, timeout: Duration): ExecutionOutcome {
+        when (command) {
+            is SafeCommand.HelmRead -> return helm.execute(command, command.toHelmArgs(), timeout)
+            is SafeCommand.HelmRollback -> return helm.execute(command, command.toHelmArgs(), timeout)
+            else -> Unit
+        }
+
         var stdout = ""
         var stderr = ""
         var exitCode = 0
@@ -35,17 +40,10 @@ class Fabric8CommandExecutor(
                 stdout = when (command) {
                     is SafeCommand.KubectlRead -> executeKubectlRead(command)
                     is SafeCommand.TriggerCronJob -> executeTriggerCronJob(command)
-                    is SafeCommand.HelmRead -> throw UnsupportedOperationException(
-                        "HelmRead not yet implemented — defer to Phase 6 helm-sandbox",
-                    )
-                    is SafeCommand.HelmRollback -> throw UnsupportedOperationException(
-                        "HelmRollback not yet implemented — defer to Phase 6 helm-sandbox",
-                    )
+                    is SafeCommand.HelmRead,
+                    is SafeCommand.HelmRollback,
+                    -> error("unreachable: helm commands return before fabric8 execution")
                 }
-            } catch (e: UnsupportedOperationException) {
-                exitCode = 99
-                stderr = e.message ?: "unsupported"
-                log.warn("executor: {} for kind={}", e.message, command.kind)
             } catch (e: Exception) {
                 exitCode = 1
                 stderr = "${e::class.java.simpleName}: ${e.message}"
@@ -158,24 +156,41 @@ class Fabric8CommandExecutor(
             .get()
             ?: error("cronjob not found: ${cmd.namespace}/${cmd.cronJobName}")
 
-        val ts = System.currentTimeMillis() / 1000
-        val jobName = "${cmd.cronJobName}-manual-$ts".take(63)
-
-        val job = JobBuilder()
-            .withNewMetadata()
-                .withName(jobName)
-                .withNamespace(cmd.namespace)
-                .addToLabels("triggered-by", "platform-automation")
-                .addToLabels("source-cronjob", cmd.cronJobName)
-            .endMetadata()
-            .withSpec(cronJob.spec.jobTemplate.spec)
-            .build()
-
         val created = client.batch().v1().jobs()
             .inNamespace(cmd.namespace)
-            .resource(job)
+            .resource(buildManualJobFromCronJob(cmd, cronJob))
             .create()
 
         return Serialization.asYaml(created)
     }
+
+    private fun SafeCommand.HelmRead.toHelmArgs(): List<String> =
+        when (verb) {
+            "history" -> listOf("history", release, "-n", namespace)
+            "status" -> listOf("status", release, "-n", namespace)
+            "get" -> listOf("get", "all", release, "-n", namespace)
+            "list" -> listOf("list", "-n", namespace, "--filter", "^$release$")
+            else -> error("unreachable: SafeCommand.HelmRead.init validates verb")
+        }
+
+    private fun SafeCommand.HelmRollback.toHelmArgs(): List<String> =
+        listOf("rollback", release, revision.toString(), "-n", namespace, "--wait", "--timeout", "5m")
+}
+
+internal fun buildManualJobFromCronJob(
+    cmd: SafeCommand.TriggerCronJob,
+    cronJob: CronJob,
+    timestampSeconds: Long = System.currentTimeMillis() / 1000,
+): Job {
+    val jobName = "${cmd.cronJobName}-manual-$timestampSeconds".take(63)
+
+    return JobBuilder()
+        .withNewMetadata()
+            .withName(jobName)
+            .withNamespace(cmd.namespace)
+            .addToLabels("triggered-by", "platform-automation")
+            .addToLabels("source-cronjob", cmd.cronJobName)
+        .endMetadata()
+        .withSpec(cronJob.spec.jobTemplate.spec)
+        .build()
 }

@@ -7,20 +7,27 @@ spring:
     url: ${RAG_QUERY_DB_URL:jdbc:postgresql://postgres-vector.n8n.svc.cluster.local:5432/rag}
     username: ${RAG_QUERY_DB_USER:rag}
     password: ${RAG_QUERY_DB_PASSWORD:}
+  flyway:
+    enabled: false
+  jpa:
+    open-in-view: false
   ai:
+    model:
+      embedding: openai
+    vectorstore:
+      type: pgvector
+      pgvector:
+        initialize-schema: false
+        dimensions: ${RAG_QUERY_EMBEDDING_DIMENSION:3072}
+        index-type: NONE
+        distance-type: COSINE_DISTANCE
+        schema-name: public
+        table-name: vector_store
     openai:
       api-key: ${OPENAI_API_KEY:}
       embedding:
         options:
-          model: text-embedding-3-small
-    vectorstore:
-      pgvector:
-        initialize-schema: false
-        dimensions: 1536
-        index-type: HNSW
-        distance-type: COSINE_DISTANCE
-        schema-name: public
-        table-name: vector_store
+          model: ${RAG_QUERY_EMBEDDINGS_MODEL:text-embedding-3-large}
 
 server:
   port: 8082
@@ -40,9 +47,9 @@ management:
 rag:
   query:
     top-k: 5
-    min-score: 0.60
-    embeddings-model: text-embedding-3-small
-    embedding-dimension: 1536
+    min-score: ${RAG_QUERY_MIN_SCORE:0.55}
+    embeddings-model: ${RAG_QUERY_EMBEDDINGS_MODEL:text-embedding-3-large}
+    embedding-dimension: ${RAG_QUERY_EMBEDDING_DIMENSION:3072}
 
 logging:
   level:

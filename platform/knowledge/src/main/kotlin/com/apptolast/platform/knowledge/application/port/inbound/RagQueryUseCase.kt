@@ -7,8 +7,8 @@ interface RagQueryUseCase {
 }
 
 data class QueryOptions(
-    /** Mínimo score de retrieval para no devolver NoEvidence. Default 0.6. */
-    val minScore: Double = 0.6,
+    /** Mínimo score de retrieval para no devolver NoEvidence. Default 0.55. */
+    val minScore: Double = 0.55,
 
     /** Máximo de chunks a recuperar. */
     val topK: Int = 8,

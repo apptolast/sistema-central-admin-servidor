@@ -2,7 +2,7 @@ apiVersion: v2
 name: apptolast-rag-ingestor
 description: |
   CronJob que cada 15 min clona el repo de docs, chunkea markdown, embeddea
-  con Spring AI (text-embedding-3-small) y persiste en pgvector vía
+  con Spring AI (text-embedding-3-large) y persiste en pgvector vía
   Spring AI VectorStore. Anti-hallucination: cita obligatoria `[source: path#section@sha]`
   acompaña cada chunk en metadata.
 type: application

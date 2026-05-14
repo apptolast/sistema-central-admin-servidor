@@ -49,9 +49,9 @@ openai:
 # Confidence threshold y top-K.
 config:
   topK: 5
-  minScore: 0.60
-  embeddingsModel: text-embedding-3-small
-  embeddingDimension: 1536
+  minScore: 0.55
+  embeddingsModel: text-embedding-3-large
+  embeddingDimension: 3072
 
 healthcheck:
   liveness:

@@ -15,6 +15,7 @@ class KnowledgeArchTest {
     fun `domain must not depend on spring`() {
         noClasses()
             .that().resideInAPackage("..knowledge.domain..")
+            .and().doNotHaveSimpleName("package-info")
             .should().dependOnClassesThat().resideInAnyPackage(
                 "org.springframework..",
                 "jakarta.persistence..",
@@ -26,6 +27,7 @@ class KnowledgeArchTest {
     fun `application port must not depend on spring or infrastructure`() {
         noClasses()
             .that().resideInAPackage("..knowledge.application.port..")
+            .and().doNotHaveSimpleName("package-info")
             .should().dependOnClassesThat().resideInAnyPackage(
                 "org.springframework..",
                 "..knowledge.infrastructure..",

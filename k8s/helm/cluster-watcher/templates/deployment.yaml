@@ -44,12 +44,28 @@ spec:
           env:
             - name: SERVER_PORT
               value: {{ .Values.service.targetPort | quote }}
-            - name: PLATFORM_BASE_URL
+            - name: CLUSTER_WATCHER_PLATFORM_BASE_URL
               value: {{ .Values.config.platformBaseUrl | quote }}
-            - name: RESYNC_PERIOD_SECONDS
+            - name: CLUSTER_WATCHER_PLATFORM_INGEST_ENDPOINT
+              value: {{ .Values.config.platformIngestEndpoint | quote }}
+            - name: CLUSTER_WATCHER_RESYNC_PERIOD_SECONDS
               value: {{ .Values.config.resyncPeriodSeconds | quote }}
-            - name: DRY_RUN
+            - name: CLUSTER_WATCHER_PUBLISH_CONCURRENCY
+              value: {{ .Values.config.publishConcurrency | quote }}
+            - name: CLUSTER_WATCHER_PUBLISH_QUEUE_CAPACITY
+              value: {{ .Values.config.publishQueueCapacity | quote }}
+            - name: CLUSTER_WATCHER_PUBLISH_TIMEOUT_SECONDS
+              value: {{ .Values.config.publishTimeoutSeconds | quote }}
+            - name: CLUSTER_WATCHER_PUBLISH_RETRY_ATTEMPTS
+              value: {{ .Values.config.publishRetryAttempts | quote }}
+            - name: CLUSTER_WATCHER_DRY_RUN
               value: {{ .Values.config.dryRun | quote }}
+            {{- if .Values.config.namespaces }}
+            - name: CLUSTER_WATCHER_NAMESPACES
+              value: {{ join "," .Values.config.namespaces | quote }}
+            {{- end }}
+            - name: BPL_JVM_THREAD_COUNT
+              value: {{ .Values.jvmOpts.threadCount | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:InitialRAMPercentage={{ .Values.jvmOpts.initialRAMPercentage }}

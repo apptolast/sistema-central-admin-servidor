@@ -13,5 +13,9 @@ dependencyResolutionManagement {
         maven("https://repo.spring.io/milestone")
     }
 
-    // Catalog via auto-discovery (copy `gradle/` from platform/ in CI).
+    versionCatalogs {
+        create("libs") {
+            from(files("../../platform/gradle/libs.versions.toml"))
+        }
+    }
 }

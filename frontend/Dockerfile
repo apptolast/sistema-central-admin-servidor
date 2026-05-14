@@ -24,6 +24,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 #  - chown de dirs que nginx necesita escribir (cache, log, run)
 RUN sed -i 's|listen       80;|listen       8080;|' /etc/nginx/conf.d/default.conf && \
     sed -i 's|pid        /run/nginx.pid;|pid        /tmp/nginx.pid;|' /etc/nginx/nginx.conf && \
+    sed -i '/^user[[:space:]]/d' /etc/nginx/nginx.conf && \
     chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx && \
     chmod -R g+w /var/cache/nginx /var/log/nginx && \
     touch /tmp/nginx.pid && chown nginx:nginx /tmp/nginx.pid

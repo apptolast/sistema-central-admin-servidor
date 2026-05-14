@@ -68,6 +68,10 @@ spec:
               value: {{ .Values.config.topK | quote }}
             - name: RAG_QUERY_MIN_SCORE
               value: {{ .Values.config.minScore | quote }}
+            - name: RAG_QUERY_EMBEDDINGS_MODEL
+              value: {{ .Values.config.embeddingsModel | quote }}
+            - name: RAG_QUERY_EMBEDDING_DIMENSION
+              value: {{ .Values.config.embeddingDimension | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:InitialRAMPercentage={{ .Values.jvmOpts.initialRAMPercentage }}

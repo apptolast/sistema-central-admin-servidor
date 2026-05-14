@@ -30,5 +30,11 @@ data class RagIngestorProperties(
     val chunkOverlapTokens: Int = 64,
 
     /** Modelo de embedding. */
-    val embeddingModel: String = "text-embedding-3-small",
+    val embeddingModel: String = "text-embedding-3-large",
+
+    /** Ejecuta un ciclo y termina el proceso. Pensado para Kubernetes CronJob. */
+    val runOnce: Boolean = false,
+
+    /** Activa el scheduler interno para modo servicio long-running. */
+    val schedulingEnabled: Boolean = true,
 )

@@ -24,7 +24,7 @@ import java.nio.file.Paths
 @Component
 class MarkdownDocIngester(
     private val properties: RagIngestorProperties,
-    @Autowired(required = false) private val vectorStore: VectorStore? = null,
+    @param:Autowired(required = false) private val vectorStore: VectorStore? = null,
 ) : DocIngester {
 
     private val log = LoggerFactory.getLogger(MarkdownDocIngester::class.java)
@@ -61,6 +61,7 @@ class MarkdownDocIngester(
             return
         }
 
+        deleteChunks(relativePath)
         val documents = chunks.map { chunk ->
             Document.builder()
                 .text(chunk.body)
@@ -92,17 +93,21 @@ class MarkdownDocIngester(
      * no está configured (dev sin DB), es no-op con log.
      */
     private fun softDeleteChunks(relativePath: String) {
+        deleteChunks(relativePath)
+    }
+
+    private fun deleteChunks(relativePath: String) {
         val store = vectorStore ?: run {
-            log.debug("no VectorStore, skipping soft-delete for {}", relativePath)
+            log.debug("no VectorStore, skipping delete for {}", relativePath)
             return
         }
         runCatching {
             val filter = FilterExpressionBuilder().eq("path", relativePath).build()
             store.delete(filter)
         }.onSuccess {
-            log.info("soft-deleted chunks for {} via metadata.path filter", relativePath)
+            log.info("deleted existing chunks for {} via metadata.path filter", relativePath)
         }.onFailure { e ->
-            log.warn("soft-delete failed for {}: {}", relativePath, e.message)
+            log.warn("delete failed for {}: {}", relativePath, e.message)
         }
     }
 

@@ -4,7 +4,7 @@ description: |
   Microservicio que cierra el loop knowledge: recibe preguntas (POST /api/v1/rag/query),
   embeddea la pregunta con Spring AI, busca por similaridad en pgvector y devuelve
   los top-K chunks con cita formato [source: path#section@sha].
-  Si confidence < 0.6 → respuesta LOW_NO_EVIDENCE (regla anti-hallucination de Pablo).
+  Si confidence < 0.55 → respuesta LOW_NO_EVIDENCE (regla anti-hallucination de Pablo).
 type: application
 version: 0.1.0
 appVersion: "0.1.0-SNAPSHOT"

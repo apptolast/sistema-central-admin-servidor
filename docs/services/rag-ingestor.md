@@ -27,7 +27,9 @@ que sirven la regla **anti-hallucination** [[feedback_rag_anti_hallucination]].
    - Citación: `services/rag-ingestor/src/main/kotlin/com/apptolast/ragingestor/git/GitRepoPoller.kt`.
 2. Recorre `docs/**/*.md`, calcula `sha-short`.
 3. Chunkea cada markdown por sección H2/H3 (`MarkdownChunkingTest` cubre el caso de acentos via NFD normalize).
-4. Embeddea cada chunk con Spring AI `text-embedding-3-small` (1536 dims).
+4. Embeddea cada chunk con Spring AI `text-embedding-3-large` (3072 dims).
+   El índice inicial usa búsqueda exacta en pgvector porque HNSW/IVFFlat no
+   indexan columnas `vector` de más de 2000 dimensiones.
 5. Persiste en `vector_store` vía Spring AI `VectorStore.add()` con metadata `{path, section, sha}`.
    - Schema: `services/rag-ingestor/src/main/resources/db/migration/V1__rag_init.sql`.
 6. Marca el último `git sha` procesado en tabla `rag_ingest_state` (single-row constraint) para que el siguiente run sea incremental.

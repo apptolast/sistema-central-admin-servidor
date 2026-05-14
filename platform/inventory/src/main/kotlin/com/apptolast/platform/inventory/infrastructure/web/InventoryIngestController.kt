@@ -1,4 +1,4 @@
-package com.apptolast.platform.internal
+package com.apptolast.platform.inventory.infrastructure.web
 
 import com.apptolast.platform.inventory.application.port.inbound.IngestResourceUseCase
 import com.apptolast.platform.inventory.application.port.inbound.IngestResult

@@ -56,14 +56,20 @@ spec:
                 - name: tmp
                   mountPath: /tmp
               env:
+                - name: HOME
+                  value: /tmp
+                - name: RAG_INGESTOR_RUN_ONCE
+                  value: "true"
+                - name: RAG_INGESTOR_SCHEDULING_ENABLED
+                  value: "false"
                 - name: RAG_INGESTOR_WORKDIR
-                  value: /workdir
+                  value: /workdir/repo
                 - name: RAG_INGESTOR_REPO_URL
                   value: {{ .Values.repo.url | quote }}
                 - name: RAG_INGESTOR_REPO_BRANCH
                   value: {{ .Values.repo.branch | quote }}
-                - name: RAG_INGESTOR_PATH_GLOB
-                  value: {{ .Values.config.pathGlob | quote }}
+                - name: RAG_INGESTOR_INCLUDE_PATHS
+                  value: {{ join "," .Values.config.includePaths | quote }}
                 {{- with .Values.repo.tokenSecret }}
                 - name: RAG_INGESTOR_REPO_TOKEN
                   valueFrom:
@@ -92,10 +98,10 @@ spec:
                   value: {{ .Values.config.embeddingsModel | quote }}
                 - name: RAG_INGESTOR_EMBEDDING_DIMENSION
                   value: {{ .Values.config.embeddingDimension | quote }}
-                - name: RAG_INGESTOR_CHUNK_SIZE
-                  value: {{ .Values.config.chunkSize | quote }}
-                - name: RAG_INGESTOR_CHUNK_OVERLAP
-                  value: {{ .Values.config.chunkOverlap | quote }}
+                - name: RAG_INGESTOR_CHUNK_TOKENS
+                  value: {{ .Values.config.chunkTokens | quote }}
+                - name: RAG_INGESTOR_CHUNK_OVERLAP_TOKENS
+                  value: {{ .Values.config.chunkOverlapTokens | quote }}
                 - name: JAVA_TOOL_OPTIONS
                   value: >-
                     -XX:InitialRAMPercentage={{ .Values.jvmOpts.initialRAMPercentage }}

@@ -80,13 +80,18 @@ serviceAccount:
   create: true
   name: platform
 
-# NetworkPolicy ingress: solo Traefik puede llegar al pod.
+# NetworkPolicy ingress: entrada pública vía Traefik y entrada interna desde
+# cluster-watcher para el endpoint `/api/v1/internal/inventory/ingest`.
 networkPolicy:
   enabled: true
   allowedSources:
     - namespace: traefik
       podLabels:
         app.kubernetes.io/name: traefik
+    - namespace: platform
+      podLabels:
+        app.kubernetes.io/instance: cluster-watcher
+        app.kubernetes.io/name: apptolast-cluster-watcher
 
 # Modulith systemName — usado en métricas y logs.
 modulithSystem: apptolast-platform
@@ -108,4 +113,5 @@ affinity: {}
 
 # Env vars extra inyectadas al pod sin tocar deployment.yaml.
 # Útil para flags por entorno (override Spring profile, OIDC issuer, etc.).
-extraEnv: {}
+extraEnv:
+  RAG_KNOWLEDGE_BASE_URL: "http://rag-query-apptolast-rag-query.platform.svc.cluster.local"

@@ -36,12 +36,16 @@ data class QueryRequest(
 
 data class CitationDto(val path: String, val section: String, val sha: String, val cite: String)
 
+data class LegacyCitationDto(val sourcePath: String, val section: String, val sha: String)
+
 data class ChunkDto(val content: String, val score: Double, val citation: CitationDto)
 
 data class QueryResponse(
     val question: String,
     val confidence: String,
+    val status: String,
     val chunks: List<ChunkDto>,
+    val citations: List<LegacyCitationDto>,
     val warning: String?,
 ) {
     companion object {
@@ -54,6 +58,10 @@ data class QueryResponse(
             return QueryResponse(
                 question = answer.question,
                 confidence = answer.confidence.name,
+                status = when (answer.confidence) {
+                    QueryAnswer.Confidence.HIGH -> "CITED"
+                    QueryAnswer.Confidence.LOW_NO_EVIDENCE -> "LOW_NO_EVIDENCE"
+                },
                 chunks = answer.chunks.map {
                     ChunkDto(
                         content = it.content,
@@ -64,6 +72,13 @@ data class QueryResponse(
                             sha = it.citation.sha,
                             cite = it.citation.toString(),
                         ),
+                    )
+                },
+                citations = answer.chunks.map {
+                    LegacyCitationDto(
+                        sourcePath = it.citation.path,
+                        section = it.citation.section,
+                        sha = it.citation.sha,
                     )
                 },
                 warning = warning,

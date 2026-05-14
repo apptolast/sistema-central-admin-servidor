@@ -73,6 +73,77 @@ class RestKnowledgeClientTest {
     }
 
     @Test
+    fun `chunk response returns parsed citations in order`() {
+        server.expect(requestTo(URI("http://rag-query.platform.svc:8082/api/v1/rag/query")))
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(
+                withSuccess(
+                    """
+                    {
+                      "confidence": "HIGH",
+                      "chunks": [
+                        {
+                          "content": "runbook text",
+                          "score": 0.82,
+                          "citation": {
+                            "path": "docs/services/rag-ingestor.md",
+                            "section": "deploy",
+                            "sha": "abc1234",
+                            "cite": "[source: docs/services/rag-ingestor.md#deploy@abc1234]"
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val result = client.query("rag ingestor deploy", topK = 3)
+
+        result shouldHaveSize 1
+        result[0].sourcePath shouldBe "docs/services/rag-ingestor.md"
+        server.verify()
+    }
+
+    @Test
+    fun `response with legacy citations and chunks is deduplicated`() {
+        server.expect(requestTo(URI("http://rag-query.platform.svc:8082/api/v1/rag/query")))
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(
+                withSuccess(
+                    """
+                    {
+                      "status": "CITED",
+                      "citations": [
+                        {"sourcePath": "docs/runbooks/n8n-prod-helm-rollback.md", "section": "1-sintoma", "sha": "abc1234"}
+                      ],
+                      "chunks": [
+                        {
+                          "content": "same citation",
+                          "score": 0.82,
+                          "citation": {
+                            "path": "docs/runbooks/n8n-prod-helm-rollback.md",
+                            "section": "1-sintoma",
+                            "sha": "abc1234",
+                            "cite": "[source: docs/runbooks/n8n-prod-helm-rollback.md#1-sintoma@abc1234]"
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val result = client.query("n8n prod runbook", topK = 3)
+
+        result shouldHaveSize 1
+        result[0].toMarkdown() shouldBe "[source: docs/runbooks/n8n-prod-helm-rollback.md#1-sintoma@abc1234]"
+        server.verify()
+    }
+
+    @Test
     fun `low confidence response returns empty list (anti-hallucination)`() {
         server.expect(requestTo(URI("http://rag-query.platform.svc:8082/api/v1/rag/query")))
             .andRespond(

@@ -49,7 +49,7 @@ jobs:
       - name: Build
         run: ./gradlew build --no-daemon -x test
 
-      # TODO(phase-1): re-habilitar ktlint + detekt cuando publiquen versiones
+      # PENDIENTE(quality): re-habilitar ktlint + detekt cuando publiquen versiones
       # compatibles con Kotlin 2.3.21. Por ahora la calidad de código la cubren
       # tests + ArchUnit + revisión humana.
       # - name: Lint (ktlint)
@@ -127,7 +127,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Stage gradle wrapper (reusa el del monolito)
         run: |
-          cp -r ../../platform/gradle .
+          mkdir -p gradle
+          cp -r ../../platform/gradle/wrapper gradle/wrapper
           cp ../../platform/gradlew .
           cp ../../platform/gradlew.bat .
           chmod +x gradlew
@@ -162,7 +163,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Stage gradle wrapper (reusa el del monolito)
         run: |
-          cp -r ../../platform/gradle .
+          mkdir -p gradle
+          cp -r ../../platform/gradle/wrapper gradle/wrapper
           cp ../../platform/gradlew .
           cp ../../platform/gradlew.bat .
           chmod +x gradlew
@@ -197,7 +199,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Stage gradle wrapper (reusa el del monolito)
         run: |
-          cp -r ../../platform/gradle .
+          mkdir -p gradle
+          cp -r ../../platform/gradle/wrapper gradle/wrapper
           cp ../../platform/gradlew .
           cp ../../platform/gradlew.bat .
           chmod +x gradlew
@@ -232,7 +235,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Stage gradle wrapper (reusa el del monolito)
         run: |
-          cp -r ../platform/gradle .
+          mkdir -p gradle
+          cp -r ../platform/gradle/wrapper gradle/wrapper
           cp ../platform/gradlew .
           cp ../platform/gradlew.bat .
           chmod +x gradlew
@@ -305,7 +309,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: OWASP dependency check
         run: ./gradlew dependencyCheckAnalyze --no-daemon
-        continue-on-error: true # Bloquear sólo en CVEs críticos via threshold (TODO)
+        continue-on-error: true # Bloquear sólo en CVEs críticos via threshold cuando el baseline esté limpio.
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -402,7 +406,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Stage gradle wrapper
         run: |
-          cp -r ../../platform/gradle .
+          mkdir -p gradle
+          cp -r ../../platform/gradle/wrapper gradle/wrapper
           cp ../../platform/gradlew .
           cp ../../platform/gradlew.bat .
           chmod +x gradlew
@@ -476,7 +481,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Stage gradle wrapper
         run: |
-          cp -r ../../platform/gradle .
+          mkdir -p gradle
+          cp -r ../../platform/gradle/wrapper gradle/wrapper
           cp ../../platform/gradlew .
           cp ../../platform/gradlew.bat .
           chmod +x gradlew
@@ -540,7 +546,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Stage gradle wrapper
         run: |
-          cp -r ../../platform/gradle .
+          mkdir -p gradle
+          cp -r ../../platform/gradle/wrapper gradle/wrapper
           cp ../../platform/gradlew .
           cp ../../platform/gradlew.bat .
           chmod +x gradlew

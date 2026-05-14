@@ -1,7 +1,7 @@
 // platform/knowledge — bounded context Knowledge / RAG (Phase 3).
 //
 // Implementa la regla anti-alucinación de [[feedback_rag_anti_hallucination]]:
-// citas obligatorias `[source: path#section@sha]`, score >= 0.6, sino la
+// citas obligatorias `[source: path#section@sha]`, score >= 0.55, sino la
 // respuesta es "no encuentro evidencia documentada".
 
 plugins {

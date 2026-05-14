@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.QuestionAnswer
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Person
@@ -31,7 +31,7 @@ private data class RailItem(
 
 private val items = listOf(
     RailItem(Route.PodDashboard, "Pods", Icons.Outlined.Dashboard),
-    RailItem(Route.RunbookViewer, "Runbooks", Icons.Outlined.MenuBook),
+    RailItem(Route.RunbookViewer, "Runbooks", Icons.AutoMirrored.Outlined.MenuBook),
     RailItem(Route.RagQuery, "Ask", Icons.Outlined.QuestionAnswer),
     RailItem(Route.CronjobBoard, "Cronjobs", Icons.Outlined.Schedule),
     RailItem(Route.AuditLog, "Audit", Icons.Outlined.History),

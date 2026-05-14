@@ -12,9 +12,13 @@ server:
   shutdown: graceful
 
 cluster-watcher:
-  platform-base-url: ${PLATFORM_BASE_URL:http://platform:8080}
+  platform-base-url: ${PLATFORM_BASE_URL:http://platform-apptolast-platform.platform.svc.cluster.local:80}
   platform-ingest-endpoint: /api/v1/internal/inventory/ingest
-  resync-period-seconds: ${RESYNC_PERIOD_SECONDS:30}
+  resync-period-seconds: ${RESYNC_PERIOD_SECONDS:300}
+  publish-concurrency: ${PUBLISH_CONCURRENCY:4}
+  publish-queue-capacity: ${PUBLISH_QUEUE_CAPACITY:2000}
+  publish-timeout-seconds: ${PUBLISH_TIMEOUT_SECONDS:15}
+  publish-retry-attempts: ${PUBLISH_RETRY_ATTEMPTS:1}
   namespaces: []                 # vacío = todos
   dry-run: ${DRY_RUN:false}
 

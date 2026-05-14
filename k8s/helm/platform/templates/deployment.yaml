@@ -57,7 +57,10 @@ spec:
                 -XX:+ExitOnOutOfMemoryError
                 -Djava.security.egd=file:/dev/./urandom
             - name: DB_URL
-              value: "jdbc:postgresql://{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.existingSecretName }}
+                  key: url
             - name: DB_USER
               valueFrom:
                 secretKeyRef:

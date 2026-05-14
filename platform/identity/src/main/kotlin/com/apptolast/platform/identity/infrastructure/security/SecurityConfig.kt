@@ -51,7 +51,7 @@ class SecurityConfig {
                 auth.anyRequest().authenticated()
             } else {
                 log.warn(
-                    "SecurityConfig: identity.oidc.enabled=false — TODO endpoint en permitAll. " +
+                    "SecurityConfig: identity.oidc.enabled=false — API en permitAll. " +
                         "Activar identity.oidc.enabled=true en producción.",
                 )
                 auth.anyRequest().permitAll()

@@ -5,40 +5,48 @@ spring:
     virtual:
       enabled: true
   datasource:
-    url: ${DB_URL:jdbc:postgresql://postgres-vector.n8n:5432/rag}
-    username: ${DB_USER:rag}
-    password: ${DB_PASSWORD:}
+    url: ${RAG_INGESTOR_DB_URL:${DB_URL:jdbc:postgresql://postgres-vector.n8n.svc.cluster.local:5432/rag}}
+    username: ${RAG_INGESTOR_DB_USER:${DB_USER:rag}}
+    password: ${RAG_INGESTOR_DB_PASSWORD:${DB_PASSWORD:}}
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
     baseline-on-migrate: true
+  jpa:
+    open-in-view: false
   ai:
+    model:
+      embedding: openai
+    vectorstore:
+      type: pgvector
+      pgvector:
+        # Flyway owns el schema (V1__rag_init.sql); Spring AI no inicializa.
+        initialize-schema: false
+        dimensions: ${RAG_INGESTOR_EMBEDDING_DIMENSION:3072}
+        index-type: NONE
+        distance-type: COSINE_DISTANCE
+        schema-name: public
+        table-name: vector_store
     openai:
       api-key: ${OPENAI_API_KEY:}
       embedding:
         options:
-          model: text-embedding-3-small
-    vectorstore:
-      pgvector:
-        # Flyway owns el schema (V1__rag_init.sql); Spring AI no inicializa.
-        initialize-schema: false
-        dimensions: 1536
-        index-type: HNSW
-        distance-type: COSINE_DISTANCE
-        schema-name: public
-        table-name: vector_store
+          model: ${RAG_INGESTOR_EMBEDDINGS_MODEL:text-embedding-3-large}
 
 server:
   port: ${SERVER_PORT:8083}
 
 rag-ingestor:
-  repo-url: ${REPO_URL:https://github.com/apptolast/sistema-central-admin-servidor.git}
-  branch: ${REPO_BRANCH:main}
-  workdir: ${WORKDIR:/var/lib/rag-ingestor/repo}
+  repo-url: ${RAG_INGESTOR_REPO_URL:${REPO_URL:https://github.com/apptolast/sistema-central-admin-servidor.git}}
+  branch: ${RAG_INGESTOR_REPO_BRANCH:${REPO_BRANCH:main}}
+  workdir: ${RAG_INGESTOR_WORKDIR:${WORKDIR:/var/lib/rag-ingestor/repo}}
+  include-paths: ${RAG_INGESTOR_INCLUDE_PATHS:docs/**/*.md,cluster-ops/audit/RUNBOOKS/**/*.md,*.md}
   poll-interval: ${POLL_INTERVAL:PT5M}
-  chunk-tokens: 512
-  chunk-overlap-tokens: 64
-  embedding-model: text-embedding-3-small
+  chunk-tokens: ${RAG_INGESTOR_CHUNK_TOKENS:${RAG_INGESTOR_CHUNK_SIZE:512}}
+  chunk-overlap-tokens: ${RAG_INGESTOR_CHUNK_OVERLAP_TOKENS:${RAG_INGESTOR_CHUNK_OVERLAP:64}}
+  embedding-model: ${RAG_INGESTOR_EMBEDDINGS_MODEL:text-embedding-3-large}
+  run-once: ${RAG_INGESTOR_RUN_ONCE:false}
+  scheduling-enabled: ${RAG_INGESTOR_SCHEDULING_ENABLED:true}
 
 management:
   endpoints:

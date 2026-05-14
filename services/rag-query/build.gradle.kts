@@ -2,7 +2,7 @@
 // recibe pregunta → embed (Spring AI) → similarity search en pgvector →
 // devuelve top-K chunks con cita formato [source: path#section@sha].
 //
-// Si confidence (max score cosine) < 0.6 → respuesta "no documented evidence",
+// Si confidence (max score cosine) < 0.55 → respuesta "no documented evidence",
 // implementando la regla anti-hallucination de feedback_rag_anti_hallucination.
 
 plugins {

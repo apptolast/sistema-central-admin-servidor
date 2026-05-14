@@ -51,13 +51,13 @@ Adoptar **stack RAG en dos capas**:
 - Expone REST público al frontend / a otros módulos: `POST /api/knowledge/ask`.
 - Llama internamente a R2R via REST.
 - **CitationValidator middleware**: parsea cada respuesta, valida que cada cita resuelve a un `chunk_id` real en pgvector. Citas inventadas → HTTP 422.
-- Aplica el threshold de score < 0.6 → "no encuentro evidencia documentada".
+- Aplica el threshold de score < 0.55 → "no encuentro evidencia documentada".
 - Loguea todas las queries + respuestas + citas usadas para audit.
 
 ### Embeddings y vector store
 
 - **Vector store**: PostgreSQL 16 + pgvector 0.8 (la misma instancia que el resto del IDP). Esquema `rag_chunks`.
-- **Embedding model**: OpenAI `text-embedding-3-small` (1536 dims) inicialmente. Migración a Ollama local evaluada en Fase 7 si coste / privacidad lo justifica.
+- **Embedding model**: OpenAI `text-embedding-3-large` (3072 dims). La tabla pgvector usa búsqueda exacta inicialmente porque HNSW/IVFFlat no indexan columnas `vector` de más de 2000 dimensiones. Migración a Ollama local evaluada en Fase 7 si coste / privacidad lo justifica.
 
 ### Capa opcional Fase 7 — Cognee
 

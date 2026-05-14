@@ -45,11 +45,14 @@ openai:
 
 config:
   # Glob de paths bajo el repo que se indexan. Resto se ignora.
-  pathGlob: "docs/**/*.md"
-  embeddingsModel: text-embedding-3-small
-  embeddingDimension: 1536
-  chunkSize: 1200
-  chunkOverlap: 150
+  includePaths:
+    - "docs/**/*.md"
+    - "cluster-ops/audit/RUNBOOKS/**/*.md"
+    - "*.md"
+  embeddingsModel: text-embedding-3-large
+  embeddingDimension: 3072
+  chunkTokens: 512
+  chunkOverlapTokens: 64
 
 resources:
   requests:

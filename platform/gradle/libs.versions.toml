@@ -13,7 +13,7 @@ springBoot                = "3.5.4"
 springDependencyMgmt      = "1.1.7"
 springModulith            = "1.4.11"
 springCloud               = "2024.0.0"
-springAi                  = "1.1.0"
+springAi                  = "1.1.6"
 
 # Persistence
 flyway                    = "10.21.0"

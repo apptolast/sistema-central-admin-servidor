@@ -12,4 +12,10 @@ dependencyResolutionManagement {
         mavenCentral()
         maven("https://repo.spring.io/milestone")
     }
+
+    versionCatalogs {
+        create("libs") {
+            from(files("../../platform/gradle/libs.versions.toml"))
+        }
+    }
 }

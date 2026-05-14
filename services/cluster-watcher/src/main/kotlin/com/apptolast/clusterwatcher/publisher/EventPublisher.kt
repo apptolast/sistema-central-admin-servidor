@@ -7,6 +7,13 @@ import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToMono
 import java.time.Duration
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import jakarta.annotation.PreDestroy
 
 /**
  * Publica eventos al platform vía HTTP POST.
@@ -14,9 +21,8 @@ import java.time.Duration
  * Fase 1: WebClient → platform `/api/v1/internal/inventory/ingest`.
  * Fase 2: reemplazado por `NatsJetStreamPublisher` (ver ADR-0005).
  *
- * Backpressure: usa Reactor scheduler con un pool acotado.
- * Retry: 3 intentos con backoff exponencial 1s/2s/4s; si fallan los 3, el evento
- * se descarta (el siguiente resync lo recuperará dentro de `resyncPeriodSeconds`).
+ * Backpressure: cola local acotada + pool fijo. Si la cola se llena, el evento
+ * se descarta y el siguiente resync lo recupera.
  */
 @Component
 class HttpEventPublisher(
@@ -25,6 +31,21 @@ class HttpEventPublisher(
 ) {
 
     private val log = LoggerFactory.getLogger(HttpEventPublisher::class.java)
+
+    private val workerId = AtomicInteger()
+    private val executor = ThreadPoolExecutor(
+        properties.publishConcurrency,
+        properties.publishConcurrency,
+        30,
+        TimeUnit.SECONDS,
+        ArrayBlockingQueue(properties.publishQueueCapacity),
+        ThreadFactory { runnable ->
+            Thread(runnable, "cluster-watcher-publisher-${workerId.incrementAndGet()}").apply {
+                isDaemon = true
+            }
+        },
+        ThreadPoolExecutor.AbortPolicy(),
+    )
 
     private val webClient: WebClient = webClientBuilder
         .baseUrl(properties.platformBaseUrl)
@@ -37,23 +58,45 @@ class HttpEventPublisher(
             return
         }
 
-        webClient.post()
-            .uri(properties.platformIngestEndpoint)
-            .bodyValue(payload)
-            .retrieve()
-            .bodyToMono<Void>()
-            .timeout(Duration.ofSeconds(5))
-            .retry(2)
-            .doOnError { err ->
-                log.warn(
-                    "publish failed kind={} ns={} name={} cause={} — next resync recovers",
-                    payload["kind"],
-                    payload["namespace"],
-                    payload["name"],
-                    err.message,
-                )
-            }
-            .onErrorComplete()
-            .subscribe()
+        try {
+            executor.execute { publishBlocking(payload) }
+        } catch (_: RejectedExecutionException) {
+            log.warn(
+                "publish queue full capacity={} kind={} ns={} name={} — next resync recovers",
+                properties.publishQueueCapacity,
+                payload["kind"],
+                payload["namespace"],
+                payload["name"],
+            )
+        }
+    }
+
+    @PreDestroy
+    fun stop() {
+        executor.shutdown()
+        if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+            executor.shutdownNow()
+        }
+    }
+
+    private fun publishBlocking(payload: Map<String, Any?>) {
+        try {
+            webClient.post()
+                .uri(properties.platformIngestEndpoint)
+                .bodyValue(payload)
+                .retrieve()
+                .bodyToMono<Void>()
+                .timeout(Duration.ofSeconds(properties.publishTimeoutSeconds))
+                .retry(properties.publishRetryAttempts)
+                .block()
+        } catch (err: Exception) {
+            log.warn(
+                "publish failed kind={} ns={} name={} cause={} — next resync recovers",
+                payload["kind"],
+                payload["namespace"],
+                payload["name"],
+                err.message,
+            )
+        }
     }
 }

@@ -56,22 +56,31 @@ class RestKnowledgeClient(
     @JsonIgnoreProperties(ignoreUnknown = true)
     internal data class QueryResponse(
         val status: String? = null,
+        val confidence: String? = null,
         val citations: List<CitationDto> = emptyList(),
+        val chunks: List<ChunkDto> = emptyList(),
     ) {
-        fun toCitations(): List<Citation> =
-            if (status == "LOW_NO_EVIDENCE") emptyList()
-            else citations.mapNotNull { it.toDomainOrNull() }
+        fun toCitations(): List<Citation> {
+            val state = status ?: confidence
+            if (state == "LOW_NO_EVIDENCE") return emptyList()
+
+            val directCitations = citations.mapNotNull { it.toDomainOrNull() }
+            val chunkCitations = chunks.mapNotNull { it.citation?.toDomainOrNull() }
+            return (directCitations.ifEmpty { chunkCitations })
+                .distinctBy { "${it.sourcePath}#${it.section}@${it.sha}" }
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     internal data class CitationDto(
-        val sourcePath: String?,
-        val section: String?,
-        val sha: String?,
+        val path: String? = null,
+        val sourcePath: String? = null,
+        val section: String? = null,
+        val sha: String? = null,
     ) {
         fun toDomainOrNull(): Citation? = try {
             Citation(
-                sourcePath = sourcePath ?: return null,
+                sourcePath = sourcePath ?: path ?: return null,
                 section = section ?: return null,
                 sha = sha ?: return null,
             )
@@ -79,4 +88,9 @@ class RestKnowledgeClient(
             null
         }
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    internal data class ChunkDto(
+        val citation: CitationDto? = null,
+    )
 }

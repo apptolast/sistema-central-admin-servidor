@@ -48,7 +48,7 @@ class PodInformer(
                 if (shouldObserve(current.metadata.namespace)) onChange(current, EventKind.UPDATE)
             }
             override fun onDelete(pod: Pod, deletedFinalStateUnknown: Boolean) {
-                if (shouldObserve(pod.metadata.namespace)) onDelete(pod, deletedFinalStateUnknown)
+                if (shouldObserve(pod.metadata.namespace)) publishDelete(pod, deletedFinalStateUnknown)
             }
         }
 
@@ -118,7 +118,7 @@ class PodInformer(
         }
     }
 
-    private fun onDelete(pod: Pod, deletedFinalStateUnknown: Boolean) {
+    internal fun publishDelete(pod: Pod, deletedFinalStateUnknown: Boolean) {
         val payload = mapOf<String, Any?>(
             "kind" to "POD",
             "operation" to "DELETE",

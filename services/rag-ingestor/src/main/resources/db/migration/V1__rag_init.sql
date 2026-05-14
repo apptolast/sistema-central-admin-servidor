@@ -2,7 +2,7 @@
 -- rag-ingestor — schema inicial Postgres + pgvector.
 -- ============================================================================
 -- Tabla vector_store: layout esperado por Spring AI PgVectorStore (default).
--- text-embedding-3-small produce 1536 dimensiones; ajusta si cambias modelo.
+-- text-embedding-3-large produce 3072 dimensiones.
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -13,11 +13,13 @@ CREATE TABLE IF NOT EXISTS vector_store (
     id          uuid          PRIMARY KEY DEFAULT uuid_generate_v4(),
     content     text          NOT NULL,
     metadata    jsonb,
-    embedding   vector(1536)
+    embedding   vector(3072)
 );
 
-CREATE INDEX IF NOT EXISTS vector_store_embedding_idx
-    ON vector_store USING hnsw (embedding vector_cosine_ops);
+-- pgvector HNSW/IVFFlat indexes have a 2000-dimension limit for vector columns.
+-- text-embedding-3-large is 3072 dimensions, so the initial deployment uses
+-- exact cosine search. For the current documentation corpus this is simpler and
+-- keeps the higher-quality embedding model.
 
 CREATE INDEX IF NOT EXISTS vector_store_metadata_path_idx
     ON vector_store ((metadata ->> 'path'));

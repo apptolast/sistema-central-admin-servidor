@@ -6,16 +6,17 @@ import com.apptolast.ragquery.domain.RetrievedChunk
 import org.slf4j.LoggerFactory
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.stereotype.Component
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Adapter pgvector — usa Spring AI VectorStore para hacer similarity search.
  *
- * Sólo se activa si hay un VectorStore en el contexto (configurado por
- * spring-ai-starter-vector-store-pgvector). Si no, se usa el fallback
- * [StubVectorSearchAdapter] que devuelve lista vacía para que la app arranque
- * en entornos sin Postgres + pgvector (CI, dev local sin DB).
+ * Resuelve el VectorStore en tiempo de uso. No usamos @ConditionalOnBean en
+ * este @Component porque puede evaluarse antes de que la autoconfiguración de
+ * Spring AI registre PgVectorStore, dejando la app en fallback aunque pgvector
+ * esté configurado.
  *
  * El metadata esperado en cada Document de pgvector (lo escribe rag-ingestor):
  *   path: String
@@ -23,14 +24,25 @@ import org.springframework.stereotype.Component
  *   sha: String
  */
 @Component
-@ConditionalOnBean(VectorStore::class)
 class PgVectorSearchAdapter(
-    private val vectorStore: VectorStore,
+    private val vectorStoreProvider: ObjectProvider<VectorStore>,
 ) : VectorSearchPort {
 
     private val log = LoggerFactory.getLogger(PgVectorSearchAdapter::class.java)
+    private val missingVectorStoreLogged = AtomicBoolean(false)
 
     override fun search(question: String, topK: Int): List<RetrievedChunk> {
+        val vectorStore = vectorStoreProvider.getIfAvailable()
+        if (vectorStore == null) {
+            if (missingVectorStoreLogged.compareAndSet(false, true)) {
+                log.warn(
+                    "pgvector NOT configured — rag-query running with empty index. " +
+                        "All queries will return LOW_NO_EVIDENCE.",
+                )
+            }
+            return emptyList()
+        }
+
         val request = SearchRequest.builder()
             .query(question)
             .topK(topK)
@@ -46,7 +58,7 @@ class PgVectorSearchAdapter(
             RetrievedChunk(
                 content = doc.text ?: "",
                 citation = Citation(path, section, sha),
-                score = score,
+                score = doc.score ?: score,
             )
         }
     }

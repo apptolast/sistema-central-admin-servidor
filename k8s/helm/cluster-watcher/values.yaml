@@ -27,12 +27,17 @@ resources:
 jvmOpts:
   initialRAMPercentage: 50
   maxRAMPercentage: 75
+  threadCount: 50
 
 # Configuración del watcher (mapeado a ClusterWatcherProperties).
 config:
-  platformBaseUrl: "http://apptolast-platform.platform:80"
+  platformBaseUrl: "http://platform-apptolast-platform.platform.svc.cluster.local:80"
   platformIngestEndpoint: "/api/v1/internal/inventory/ingest"
-  resyncPeriodSeconds: 30
+  resyncPeriodSeconds: 300
+  publishConcurrency: 1
+  publishQueueCapacity: 2000
+  publishTimeoutSeconds: 15
+  publishRetryAttempts: 1
   # Vacío = todos los namespaces. Restringe en dev a evitar ruido.
   namespaces: []
   dryRun: false

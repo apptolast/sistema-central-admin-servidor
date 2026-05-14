@@ -8,9 +8,10 @@ import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import java.time.Duration
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 
 @EnableKubernetesMockClient(crud = true)
 class Fabric8CommandExecutorTest {
@@ -18,31 +19,12 @@ class Fabric8CommandExecutorTest {
     lateinit var client: KubernetesClient
     private lateinit var executor: Fabric8CommandExecutor
 
+    @TempDir
+    lateinit var tempDir: Path
+
     @BeforeEach
     fun setUp() {
         executor = Fabric8CommandExecutor(client)
-    }
-
-    @Test
-    @Disabled(
-        "fabric8 7.0.1 KubernetesMockServer (crud=true) intermittently times out on the first POST " +
-            "of a fresh test class. Logic is exercised in the list/cronjob paths below and confirmed " +
-            "manually against a real cluster. Re-enable when fabric8 mock dispatcher fixes the warm-up.",
-    )
-    fun `kubectl get pod by name returns YAML`() {
-        val pod = PodBuilder()
-            .withNewMetadata().withName("n8n-prod-1").withNamespace("n8n").endMetadata()
-            .withNewSpec().endSpec()
-            .build()
-        client.pods().inNamespace("n8n").resource(pod).create()
-
-        val outcome = executor.execute(
-            SafeCommand.KubectlRead("get", "pods", "n8n", "n8n-prod-1"),
-        )
-
-        outcome.exitCode shouldBe 0
-        outcome.stdout shouldContain "n8n-prod-1"
-        outcome.stdout shouldContain "namespace: \"n8n\""
     }
 
     @Test
@@ -75,22 +57,37 @@ class Fabric8CommandExecutorTest {
     }
 
     @Test
-    fun `HelmRead returns exit 99 with not-yet-implemented`() {
-        val outcome = executor.execute(SafeCommand.HelmRead("status", "n8n-prod", "n8n"))
-        outcome.exitCode shouldBe 99
-        outcome.stderr shouldContain "not yet implemented"
+    fun `HelmRead delegates to sandbox with safe args`() {
+        val helm = fakeHelm()
+        val helmExecutor = Fabric8CommandExecutor(client, HelmCliSandbox(candidatePaths = listOf(helm)))
+
+        val outcome = helmExecutor.execute(SafeCommand.HelmRead("status", "n8n-prod", "n8n"))
+
+        outcome.exitCode shouldBe 0
+        outcome.stdout shouldContain "<status>"
+        outcome.stdout shouldContain "<n8n-prod>"
+        outcome.stdout shouldContain "<-n>"
+        outcome.stdout shouldContain "<n8n>"
     }
 
     @Test
-    fun `HelmRollback returns exit 99 with not-yet-implemented`() {
-        val outcome = executor.execute(SafeCommand.HelmRollback("n8n-prod", "n8n", 11))
-        outcome.exitCode shouldBe 99
-        outcome.stderr shouldContain "not yet implemented"
+    fun `HelmRollback delegates to sandbox with wait and timeout`() {
+        val helm = fakeHelm()
+        val helmExecutor = Fabric8CommandExecutor(client, HelmCliSandbox(candidatePaths = listOf(helm)))
+
+        val outcome = helmExecutor.execute(SafeCommand.HelmRollback("n8n-prod", "n8n", 11))
+
+        outcome.exitCode shouldBe 0
+        outcome.stdout shouldContain "<rollback>"
+        outcome.stdout shouldContain "<n8n-prod>"
+        outcome.stdout shouldContain "<11>"
+        outcome.stdout shouldContain "<--wait>"
+        outcome.stdout shouldContain "<--timeout>"
+        outcome.stdout shouldContain "<5m>"
     }
 
     @Test
-    @Disabled("Same fabric8 mock first-POST flake as the disabled test above.")
-    fun `TriggerCronJob creates a Job from the CronJob spec`() {
+    fun `TriggerCronJob builds a manual Job from the CronJob spec`() {
         val cron = CronJobBuilder()
             .withNewMetadata().withName("host-checks").withNamespace("cluster-ops").endMetadata()
             .withNewSpec()
@@ -110,21 +107,18 @@ class Fabric8CommandExecutorTest {
                 .endJobTemplate()
             .endSpec()
             .build()
-        client.batch().v1().cronjobs().inNamespace("cluster-ops").resource(cron).create()
 
-        val outcome = executor.execute(
+        val job = buildManualJobFromCronJob(
             SafeCommand.TriggerCronJob("cluster-ops", "host-checks"),
-            Duration.ofSeconds(5),
+            cron,
+            timestampSeconds = 1_776_000_000,
         )
 
-        outcome.success shouldBe true
-        outcome.stdout shouldContain "host-checks-manual-"
-        outcome.stdout shouldContain "busybox:latest"
-
-        val jobs = client.batch().v1().jobs().inNamespace("cluster-ops").list().items
-        jobs.size shouldBe 1
-        jobs[0].metadata.labels["triggered-by"] shouldBe "platform-automation"
-        jobs[0].metadata.labels["source-cronjob"] shouldBe "host-checks"
+        job.metadata.name shouldBe "host-checks-manual-1776000000"
+        job.metadata.namespace shouldBe "cluster-ops"
+        job.metadata.labels["triggered-by"] shouldBe "platform-automation"
+        job.metadata.labels["source-cronjob"] shouldBe "host-checks"
+        job.spec.template.spec.containers[0].image shouldBe "busybox:latest"
     }
 
     @Test
@@ -134,5 +128,18 @@ class Fabric8CommandExecutorTest {
         )
         outcome.exitCode shouldBe 1
         outcome.stderr shouldContain "cronjob not found"
+    }
+
+    private fun fakeHelm(): Path {
+        val helm = tempDir.resolve("helm")
+        Files.writeString(
+            helm,
+            """
+            #!/usr/bin/env bash
+            printf '<%s>\n' "$@"
+            """.trimIndent(),
+        )
+        helm.toFile().setExecutable(true)
+        return helm
     }
 }

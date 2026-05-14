@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties(prefix = "rag.query")
 data class RagQueryProperties(
     val topK: Int = 5,
-    val minScore: Double = 0.60,
-    val embeddingsModel: String = "text-embedding-3-small",
-    val embeddingDimension: Int = 1536,
+    val minScore: Double = 0.55,
+    val embeddingsModel: String = "text-embedding-3-large",
+    val embeddingDimension: Int = 3072,
 )

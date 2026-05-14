@@ -8,7 +8,7 @@ fullnameOverride: ""
 
 image:
   repository: quay.io/keycloak/keycloak
-  tag: "26.6.0"
+  tag: "26.6.1"
   pullPolicy: IfNotPresent
 
 replicaCount: 1   # single-node cluster
@@ -21,12 +21,10 @@ resources:
     cpu: "1"
     memory: 1280Mi
 
-# Modo de arranque. En production REAL queremos `start` (no `start-dev`),
-# pero para Phase 4 D1 scaffold dejamos start-dev (no requiere SSL configurado
-# externamente, tiene cache local en disco, y permite el primer login para
-# crear users). Promoción a `start` se hace en D8 hardening.
+# Modo de arranque. El TLS termina en Traefik/cert-manager y Keycloak escucha
+# HTTP interno en 8080, con health/metrics en el puerto de management 9000.
 keycloak:
-  mode: "start-dev"
+  mode: "start"
   # Realm to auto-import en el arranque. Si está vacío, no se importa nada y
   # se entra solo con master/admin.
   realmImport:
@@ -42,15 +40,15 @@ keycloak:
 admin:
   existingSecretName: "keycloak-admin-credentials"
 
-# Base de datos.
-# dev (default): H2 file-based en /opt/keycloak/data → PVC Longhorn 2Gi.
-# prod:          Postgres externo, mismo cluster (postgres-platform).
+# Base de datos. Usamos Postgres persistente; H2/start-dev queda descartado
+# para el despliegue público de auth.apptolast.com.
 database:
-  vendor: "h2-file"      # h2-file | postgres
+  vendor: "postgres"      # postgres
   postgres:
-    host: postgres-platform
+    host: postgres-n8n.n8n.svc.cluster.local
     port: 5432
-    database: keycloak
+    database: apptolast_platform
+    schema: keycloak
     existingSecretName: keycloak-postgres-credentials  # claves: user, password
 
 persistence:
@@ -62,6 +60,7 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 8080
+  managementTargetPort: 9000
 
 ingress:
   enabled: true
@@ -78,12 +77,14 @@ serviceAccount:
 healthcheck:
   liveness:
     path: /health/live
+    port: management
     initialDelaySeconds: 60
     periodSeconds: 15
     timeoutSeconds: 5
     failureThreshold: 5
   readiness:
     path: /health/ready
+    port: management
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5

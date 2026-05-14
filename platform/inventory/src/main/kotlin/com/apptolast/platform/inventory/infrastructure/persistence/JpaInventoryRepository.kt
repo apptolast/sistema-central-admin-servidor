@@ -35,13 +35,13 @@ class JpaInventoryRepository(
 ) : InventoryRepository {
 
     override fun savePod(pod: Pod): SaveOutcome {
-        val existing = podRepo.findByNamespaceAndNameAndDeletedAtIsNull(pod.ref.namespace, pod.ref.name)
+        val existing = podRepo.findByNamespaceAndName(pod.ref.namespace, pod.ref.name)
         return when {
             existing == null -> {
                 podRepo.save(mapper.newEntity(pod))
                 SaveOutcome.Inserted
             }
-            existing.resourceVersion == pod.resourceVersion -> {
+            existing.deletedAt == null && existing.resourceVersion == pod.resourceVersion -> {
                 existing.observedAt = pod.observedAt
                 podRepo.save(existing)
                 SaveOutcome.Unchanged
@@ -78,7 +78,7 @@ class JpaInventoryRepository(
     }
 
     override fun saveService(service: Service): SaveOutcome {
-        val existing = serviceRepo.findByNamespaceAndNameAndDeletedAtIsNull(
+        val existing = serviceRepo.findByNamespaceAndName(
             service.ref.namespace,
             service.ref.name,
         )
@@ -87,7 +87,7 @@ class JpaInventoryRepository(
                 serviceRepo.save(mapper.newEntity(service))
                 SaveOutcome.Inserted
             }
-            existing.resourceVersion == service.resourceVersion -> SaveOutcome.Unchanged
+            existing.deletedAt == null && existing.resourceVersion == service.resourceVersion -> SaveOutcome.Unchanged
             else -> {
                 mapper.applyToEntity(service, existing)
                 serviceRepo.save(existing)
@@ -110,7 +110,7 @@ class JpaInventoryRepository(
     }
 
     override fun saveIngress(ingress: Ingress): SaveOutcome {
-        val existing = ingressRepo.findByNamespaceAndNameAndKindAndDeletedAtIsNull(
+        val existing = ingressRepo.findByNamespaceAndNameAndKind(
             ingress.ref.namespace,
             ingress.ref.name,
             ingress.kind.name,
@@ -120,7 +120,7 @@ class JpaInventoryRepository(
                 ingressRepo.save(mapper.newEntity(ingress))
                 SaveOutcome.Inserted
             }
-            existing.resourceVersion == ingress.resourceVersion -> SaveOutcome.Unchanged
+            existing.deletedAt == null && existing.resourceVersion == ingress.resourceVersion -> SaveOutcome.Unchanged
             else -> {
                 mapper.applyToEntity(ingress, existing)
                 ingressRepo.save(existing)
@@ -142,13 +142,13 @@ class JpaInventoryRepository(
     }
 
     override fun savePvc(pvc: PersistentVolumeClaim): SaveOutcome {
-        val existing = pvcRepo.findByNamespaceAndNameAndDeletedAtIsNull(pvc.ref.namespace, pvc.ref.name)
+        val existing = pvcRepo.findByNamespaceAndName(pvc.ref.namespace, pvc.ref.name)
         return when {
             existing == null -> {
                 pvcRepo.save(mapper.newEntity(pvc))
                 SaveOutcome.Inserted
             }
-            existing.resourceVersion == pvc.resourceVersion -> SaveOutcome.Unchanged
+            existing.deletedAt == null && existing.resourceVersion == pvc.resourceVersion -> SaveOutcome.Unchanged
             else -> {
                 mapper.applyToEntity(pvc, existing)
                 pvcRepo.save(existing)
@@ -171,7 +171,7 @@ class JpaInventoryRepository(
     }
 
     override fun saveCertificate(certificate: Certificate): SaveOutcome {
-        val existing = certRepo.findByNamespaceAndNameAndDeletedAtIsNull(
+        val existing = certRepo.findByNamespaceAndName(
             certificate.ref.namespace,
             certificate.ref.name,
         )
@@ -180,7 +180,7 @@ class JpaInventoryRepository(
                 certRepo.save(mapper.newEntity(certificate))
                 SaveOutcome.Inserted
             }
-            existing.resourceVersion == certificate.resourceVersion -> SaveOutcome.Unchanged
+            existing.deletedAt == null && existing.resourceVersion == certificate.resourceVersion -> SaveOutcome.Unchanged
             else -> {
                 mapper.applyToEntity(certificate, existing)
                 certRepo.save(existing)

@@ -23,17 +23,16 @@ import androidx.compose.ui.unit.dp
  * Pantalla 6: Login (Keycloak OIDC).
  *
  * Spec: docs/design/specs/06-login-keycloak.md
- *   - Botón "Iniciar sesión con Keycloak" → redirect a /oauth2/authorization/keycloak
+ *   - Botón "Iniciar sesión con Keycloak" → redirect a Keycloak OIDC
  *   - Tras login muestra badge de role (admin, viewer, oncall)
  *
- * Phase 4 dependency: necesita Keycloak desplegado + Spring Security OAuth2
- * Resource Server en el platform-app.
+ * Keycloak ya está desplegado; el backend aún no fuerza sesión/RBAC.
  */
 
 /**
- * Redirección al endpoint estándar de Spring Security OAuth2.
+ * Redirección al authorization endpoint de Keycloak.
  * `expect` multiplatform — implementación de wasmJs hace
- * `window.location.href = "/oauth2/authorization/keycloak"`.
+ * `window.location.href = "https://auth.apptolast.com/realms/apptolast/..."`.
  */
 expect fun openOidcLogin()
 
@@ -67,8 +66,7 @@ fun LoginScreen(onLoginClicked: () -> Unit = { openOidcLogin() }) {
                     Text("Iniciar sesión con Keycloak")
                 }
                 Text(
-                    "Phase 4 dependency. Mientras tanto, todas las rutas son " +
-                        "públicas detrás de cluster-ops basicauth.",
+                    "Keycloak activo en auth.apptolast.com. RBAC de backend pendiente.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

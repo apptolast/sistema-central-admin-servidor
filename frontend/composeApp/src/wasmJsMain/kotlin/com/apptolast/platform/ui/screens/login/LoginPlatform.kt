@@ -1,18 +1,27 @@
 package com.apptolast.platform.ui.screens.login
 
 import kotlinx.browser.window
+import kotlin.js.ExperimentalWasmJsInterop
 
 /**
  * `actual` para [openOidcLogin] en wasmJs.
  *
- * Redirige a `/oauth2/authorization/keycloak` — el endpoint default que
- * Spring Security OAuth2 Client expone para iniciar el authorization code
- * flow contra el provider `keycloak` configurado en application.yml.
- *
- * Se hace `window.location.href = ...` en vez de un fetch, porque OAuth2
- * code flow requiere navegación REAL del browser (no XHR) para que la
- * cookie de sesión se establezca correctamente tras el callback.
+ * Redirige al authorization endpoint real de Keycloak. El backend actual aún
+ * no expone OAuth2 Client login en `/oauth2/authorization/keycloak`.
  */
 actual fun openOidcLogin() {
-    window.location.href = "/oauth2/authorization/keycloak"
+    val redirectUri = "${window.location.origin}/"
+    window.location.href =
+        "https://auth.apptolast.com/realms/apptolast/protocol/openid-connect/auth" +
+            "?client_id=idp-frontend" +
+            "&redirect_uri=${encodeURIComponent(redirectUri)}" +
+            "&response_type=code" +
+            "&scope=openid%20profile%20email" +
+            "&code_challenge_method=S256" +
+            "&code_challenge=2cC0CMG1K0g_cQxYZEx7A7q2DDqaJx4ZxEuRkRkIh6E" +
+            "&state=apptolast-idp"
 }
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@Suppress("UnsafeCastFromDynamic")
+private fun encodeURIComponent(value: String): String = js("encodeURIComponent(value)")

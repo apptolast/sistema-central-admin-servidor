@@ -17,5 +17,19 @@ spec:
         - name: {{ include "keycloak.fullname" . }}
           port: {{ .Values.service.port }}
   tls:
-    certResolver: {{ .Values.ingress.certIssuer }}
+    secretName: {{ printf "%s-tls" (include "keycloak.fullname" .) }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ printf "%s-tls" (include "keycloak.fullname" .) }}
+  labels:
+    {{- include "keycloak.labels" . | nindent 4 }}
+spec:
+  secretName: {{ printf "%s-tls" (include "keycloak.fullname" .) }}
+  dnsNames:
+    - {{ .Values.ingress.host }}
+  issuerRef:
+    name: {{ .Values.ingress.certIssuer }}
+    kind: ClusterIssuer
 {{- end }}

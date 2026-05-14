@@ -12,6 +12,7 @@ import java.time.Instant
 import java.util.UUID
 
 interface PodJpaRepository : JpaRepository<PodEntity, UUID> {
+    fun findByNamespaceAndName(namespace: String, name: String): PodEntity?
     fun findByNamespaceAndNameAndDeletedAtIsNull(namespace: String, name: String): PodEntity?
     fun findAllByDeletedAtIsNull(): List<PodEntity>
     fun findAllByNamespaceAndDeletedAtIsNull(namespace: String): List<PodEntity>
@@ -20,6 +21,7 @@ interface PodJpaRepository : JpaRepository<PodEntity, UUID> {
 }
 
 interface ServiceJpaRepository : JpaRepository<ServiceEntity, UUID> {
+    fun findByNamespaceAndName(namespace: String, name: String): ServiceEntity?
     fun findByNamespaceAndNameAndDeletedAtIsNull(namespace: String, name: String): ServiceEntity?
     fun findAllByDeletedAtIsNull(): List<ServiceEntity>
     fun findAllByNamespaceAndDeletedAtIsNull(namespace: String): List<ServiceEntity>
@@ -28,6 +30,12 @@ interface ServiceJpaRepository : JpaRepository<ServiceEntity, UUID> {
 }
 
 interface IngressJpaRepository : JpaRepository<IngressEntity, UUID> {
+    fun findByNamespaceAndNameAndKind(
+        namespace: String,
+        name: String,
+        kind: String,
+    ): IngressEntity?
+
     fun findByNamespaceAndNameAndKindAndDeletedAtIsNull(
         namespace: String,
         name: String,
@@ -39,6 +47,7 @@ interface IngressJpaRepository : JpaRepository<IngressEntity, UUID> {
 }
 
 interface PvcJpaRepository : JpaRepository<PvcEntity, UUID> {
+    fun findByNamespaceAndName(namespace: String, name: String): PvcEntity?
     fun findByNamespaceAndNameAndDeletedAtIsNull(namespace: String, name: String): PvcEntity?
     fun findAllByDeletedAtIsNull(): List<PvcEntity>
     fun findAllByNamespaceAndDeletedAtIsNull(namespace: String): List<PvcEntity>
@@ -47,6 +56,7 @@ interface PvcJpaRepository : JpaRepository<PvcEntity, UUID> {
 }
 
 interface CertificateJpaRepository : JpaRepository<CertificateEntity, UUID> {
+    fun findByNamespaceAndName(namespace: String, name: String): CertificateEntity?
     fun findByNamespaceAndNameAndDeletedAtIsNull(namespace: String, name: String): CertificateEntity?
     fun findAllByDeletedAtIsNull(): List<CertificateEntity>
     fun findAllByNamespaceAndDeletedAtIsNull(namespace: String): List<CertificateEntity>

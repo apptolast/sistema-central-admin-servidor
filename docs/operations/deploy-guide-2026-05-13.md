@@ -104,19 +104,27 @@ todas las rutas son `permitAll`. Para activar auth real:
 
 ```bash
 # Pre-flight: crear secrets bootstrap (NUNCA en values.yaml).
-kubectl create namespace identity
-kubectl -n identity create secret generic keycloak-admin-credentials \
+kubectl create namespace platform
+kubectl -n platform create secret generic keycloak-admin-credentials \
   --from-literal=username=admin \
   --from-literal=password=$(openssl rand -base64 24)
 
-# Install
-helm -n identity install keycloak k8s/helm/keycloak
+kubectl -n platform create secret generic keycloak-postgres-credentials \
+  --from-literal=user="$DB_USER" \
+  --from-literal=password="$DB_PASSWORD"
 
-# Esperar (Keycloak tarda 60-90s en arrancar por la migration de H2)
-kubectl -n identity wait --for=condition=Available deploy/keycloak --timeout=300s
+# Crear schema dedicado dentro de apptolast_platform.
+PGPASSWORD="$DB_PASSWORD" psql "$DB_URL" -U "$DB_USER" \
+  -c 'create schema if not exists keycloak authorization platform;'
+
+# Install
+helm -n platform install keycloak k8s/helm/keycloak
+
+# Esperar (Keycloak tarda 60-120s en arrancar por la migración de Postgres)
+kubectl -n platform wait --for=condition=Available deploy/keycloak --timeout=300s
 
 # Verificar
-curl -I https://auth.apptolast.com/health/ready        # → 200
+curl -I https://auth.apptolast.com/realms/apptolast/.well-known/openid-configuration
 
 # Activar OIDC en platform-app:
 kubectl -n platform set env deploy/platform \

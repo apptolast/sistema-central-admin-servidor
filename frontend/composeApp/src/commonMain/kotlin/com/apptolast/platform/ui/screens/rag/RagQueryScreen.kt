@@ -8,18 +8,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -32,6 +34,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.apptolast.platform.ui.data.RagAnswer
 import com.apptolast.platform.ui.data.RagCitation
@@ -120,10 +130,24 @@ fun RagQueryScreen(
                     value = query,
                     onValueChange = { query = it },
                     placeholder = { Text("¿Por qué falló el último despliegue de inventory?") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).onPreviewKeyEvent { event ->
+                        if (event.key == Key.Enter && event.type == KeyEventType.KeyUp) {
+                            send()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                     enabled = !loading,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { send() }),
                 )
-                IconButton(onClick = ::send, enabled = !loading && query.isNotBlank()) {
+                Button(
+                    onClick = { send() },
+                    enabled = !loading && query.isNotBlank(),
+                    modifier = Modifier.width(64.dp).height(56.dp),
+                ) {
                     Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Enviar")
                 }
             }

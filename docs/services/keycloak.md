@@ -3,13 +3,14 @@ title: Keycloak — OIDC IdP del IDP
 owner: pablo
 type: service
 phase: 4
-status: scaffold
-last-verified: 2026-05-13
+status: deployed
+last-verified: 2026-05-14
 source-of-truth: k8s/helm/keycloak/
 tags: [identity, oidc, keycloak, phase-4, wave-d]
 depends-on:
-  - namespace:identity
+  - namespace:platform
   - pvc:keycloak-data-longhorn
+  - postgres-schema:apptolast_platform.keycloak
 used-by:
   - service:idp-frontend
   - service:idp-backend
@@ -18,39 +19,40 @@ related-adrs:
   - 0008-identity-oidc-spring-security
 ---
 
-# Keycloak 26.6 — IdP OIDC del IDP
+# Keycloak 26.6.1 — IdP OIDC del IDP
 
-Phase 4 / Wave-D D1. Chart Helm minimal en `k8s/helm/keycloak/` que despliega
-Keycloak 26.6 oficial con realm `apptolast` autoimportado.
+Phase 4 / Wave-D. Chart Helm en `k8s/helm/keycloak/` que despliega Keycloak
+26.6.1 oficial con realm `apptolast` autoimportado.
 
 ## Status
 
-**Scaffold listo, NO desplegado** en el cluster a fecha 2026-05-13. Este
-documento describe el contrato. El deployment real es responsabilidad de
-Wave-D D4 (Pablo / devops-engineer) en una sesión separada con acceso al
-cluster vivo.
+Desplegado en el namespace `platform` detrás de Traefik:
+
+- host público: `https://auth.apptolast.com`
+- TLS: `Certificate/keycloak-tls` emitido por `cloudflare-clusterissuer`
+- persistencia: Postgres compartido `apptolast_platform`, schema `keycloak`
+- health interno: puerto de management `9000`
 
 ## Deploy
 
 ```bash
 # 1. Crear el secret de admin antes del install (NO commitear values con
 #    passwords plain — el chart NO los acepta, sólo lee del secret).
-kubectl create namespace identity
-kubectl -n identity create secret generic keycloak-admin-credentials \
+kubectl create namespace platform
+kubectl -n platform create secret generic keycloak-admin-credentials \
   --from-literal=username=admin \
   --from-literal=password=$(openssl rand -base64 24)
 
-# 2. Si se usa Postgres externo (recommended para prod):
-kubectl -n identity create secret generic keycloak-postgres-credentials \
-  --from-literal=user=keycloak \
-  --from-literal=password=$(openssl rand -base64 24)
-# y editar values.yaml: database.vendor=postgres
+# 2. Secret Postgres y schema dedicado.
+kubectl -n platform create secret generic keycloak-postgres-credentials \
+  --from-literal=user="$DB_USER" \
+  --from-literal=password="$DB_PASSWORD"
 
 # 3. Install
-helm -n identity install keycloak k8s/helm/keycloak/
+helm -n platform install keycloak k8s/helm/keycloak/
 
 # 4. Esperar a ready (60-90s primer arranque)
-kubectl -n identity wait --for=condition=Available deploy/keycloak --timeout=180s
+kubectl -n platform wait --for=condition=Available deploy/keycloak --timeout=300s
 ```
 
 ## Realm `apptolast`
@@ -69,9 +71,9 @@ Definido en `templates/realm-configmap.yaml` con:
 
 ## Modo de arranque
 
-`start-dev` por default (Wave-D D1 scaffold). En production REAL se promueve
-a `start` con SSL configurado externamente (Wave-D D8 hardening). Ver
-`docs/runbooks/RB-XX-keycloak-prod-promote.md` (TBD).
+`start` con `KC_HTTP_ENABLED=true` porque TLS termina en Traefik. Health y
+metrics quedan en el puerto interno de management `9000`; no se publican por
+`auth.apptolast.com`.
 
 ## Resources / RAM
 
@@ -93,11 +95,10 @@ imagen oficial (auto-tuning por containers).
 
 ## Próximas waves
 
-- **D2** (este PR): Identity module Spring Security Resource Server
-  consumiendo `idp-backend` client → validar JWTs.
-- **D4**: integración real con Keycloak vivo. Frontend OIDC code flow.
-- **D8** (Phase 4 hardening): promoción a `start` mode, TLS edge en
-  Keycloak directamente (sin tilde de Traefik), session cookie Secure.
+- Integrar `platform-app` como OAuth2 login/client real contra este issuer.
+- Cambiar la pantalla `Cuenta` para que el botón no sea placeholder y use el
+  flujo `/oauth2/authorization/keycloak`.
+- Endurecer sesiones/cookies y RBAC antes de cerrar rutas mutantes públicas.
 
 ## Citas
 

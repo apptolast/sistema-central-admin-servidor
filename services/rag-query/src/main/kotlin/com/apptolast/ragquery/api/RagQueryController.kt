@@ -44,6 +44,7 @@ data class QueryResponse(
     val question: String,
     val confidence: String,
     val status: String,
+    val body: String?,
     val chunks: List<ChunkDto>,
     val citations: List<LegacyCitationDto>,
     val warning: String?,
@@ -62,6 +63,7 @@ data class QueryResponse(
                     QueryAnswer.Confidence.HIGH -> "CITED"
                     QueryAnswer.Confidence.LOW_NO_EVIDENCE -> "LOW_NO_EVIDENCE"
                 },
+                body = answer.evidenceBody(),
                 chunks = answer.chunks.map {
                     ChunkDto(
                         content = it.content,
@@ -84,5 +86,16 @@ data class QueryResponse(
                 warning = warning,
             )
         }
+
+        private fun QueryAnswer.evidenceBody(): String? =
+            when (confidence) {
+                QueryAnswer.Confidence.HIGH ->
+                    chunks
+                        .map { it.content.trim() }
+                        .filter { it.isNotBlank() }
+                        .joinToString(separator = "\n\n")
+                        .takeIf { it.isNotBlank() }
+                QueryAnswer.Confidence.LOW_NO_EVIDENCE -> null
+            }
     }
 }

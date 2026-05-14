@@ -63,7 +63,7 @@ cd frontend/
 |----------|----------------|-----------------|
 | platform-app | 8080 | `/api/v1/inventory/pods`, `/api/v1/internal/inventory/ingest`, `/actuator/health` |
 | cluster-watcher | 8081 | `/actuator/health` (observador) |
-| rag-query | 8082 | `POST /api/v1/rag/query` `{question, topK?}`, `/actuator/health` |
+| rag-query | 8082 | `POST /api/v1/rag/query` `{question, topK?}` -> `{status, body, chunks, citations, warning}`, `/actuator/health` |
 
 ## 4. Lo que falta — leer estos primero
 

@@ -42,6 +42,9 @@ spec:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
+            - name: management
+              containerPort: {{ .Values.service.managementTargetPort }}
+              protocol: TCP
           env:
             - name: KC_HEALTH_ENABLED
               value: "true"
@@ -51,16 +54,18 @@ spec:
               value: "true"
             - name: KC_HTTP_PORT
               value: "8080"
+            - name: KC_HTTP_MANAGEMENT_PORT
+              value: {{ .Values.service.managementTargetPort | quote }}
             - name: KC_HOSTNAME
-              value: {{ .Values.ingress.host | quote }}
+              value: {{ printf "https://%s" .Values.ingress.host | quote }}
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
-            - name: KEYCLOAK_ADMIN
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.admin.existingSecretName }}
                   key: username
-            - name: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.admin.existingSecretName }}
@@ -70,6 +75,8 @@ spec:
               value: postgres
             - name: KC_DB_URL
               value: "jdbc:postgresql://{{ .Values.database.postgres.host }}:{{ .Values.database.postgres.port }}/{{ .Values.database.postgres.database }}"
+            - name: KC_DB_SCHEMA
+              value: {{ .Values.database.postgres.schema | quote }}
             - name: KC_DB_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -94,7 +101,7 @@ spec:
           livenessProbe:
             httpGet:
               path: {{ .Values.healthcheck.liveness.path }}
-              port: http
+              port: {{ .Values.healthcheck.liveness.port }}
             initialDelaySeconds: {{ .Values.healthcheck.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.healthcheck.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.healthcheck.liveness.timeoutSeconds }}
@@ -102,7 +109,7 @@ spec:
           readinessProbe:
             httpGet:
               path: {{ .Values.healthcheck.readiness.path }}
-              port: http
+              port: {{ .Values.healthcheck.readiness.port }}
             initialDelaySeconds: {{ .Values.healthcheck.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.healthcheck.readiness.periodSeconds }}
             timeoutSeconds: {{ .Values.healthcheck.readiness.timeoutSeconds }}

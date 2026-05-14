@@ -1,16 +1,15 @@
 apiVersion: v2
 name: keycloak
 description: |
-  Keycloak 26.6 — OIDC IdP del IDP de AppToLast (Phase 4 / Wave-D D1).
-  Single-node, dev-mode start con realm import. Persistencia opcional Longhorn
-  para tests; produccion usa Postgres externo (mismo postgres-platform).
+  Keycloak 26.6 — OIDC IdP del IDP de AppToLast (Phase 4 / Wave-D).
+  Single-node, start mode con realm import y Postgres persistente.
 
   Esta chart NO depende de Bitnami/keycloak — es scratch deployment con la
   imagen oficial quay.io/keycloak/keycloak para mantener footprint mínimo.
 
 type: application
 version: 0.1.0
-appVersion: "26.6.0"
+appVersion: "26.6.1"
 
 home: https://github.com/apptolast/sistema-central-admin-servidor
 sources:

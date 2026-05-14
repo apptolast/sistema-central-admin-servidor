@@ -15,6 +15,7 @@ import com.apptolast.platform.inventory.domain.model.ResourceKind
 import com.apptolast.platform.inventory.domain.model.ResourceRef
 import com.apptolast.platform.inventory.domain.model.Service
 import com.apptolast.platform.inventory.infrastructure.persistence.repository.CertificateJpaRepository
+import com.apptolast.platform.inventory.infrastructure.persistence.entity.PodEntity
 import com.apptolast.platform.inventory.infrastructure.persistence.repository.IngressJpaRepository
 import com.apptolast.platform.inventory.infrastructure.persistence.repository.PodJpaRepository
 import com.apptolast.platform.inventory.infrastructure.persistence.repository.PvcJpaRepository
@@ -40,7 +41,11 @@ class JpaInventoryRepository(
                 podRepo.save(mapper.newEntity(pod))
                 SaveOutcome.Inserted
             }
-            existing.resourceVersion == pod.resourceVersion -> SaveOutcome.Unchanged
+            existing.resourceVersion == pod.resourceVersion -> {
+                existing.observedAt = pod.observedAt
+                podRepo.save(existing)
+                SaveOutcome.Unchanged
+            }
             else -> {
                 mapper.applyToEntity(pod, existing)
                 podRepo.save(existing)
@@ -52,6 +57,7 @@ class JpaInventoryRepository(
     override fun findPod(ref: ResourceRef): Pod? {
         require(ref.kind == ResourceKind.POD)
         return podRepo.findByNamespaceAndNameAndDeletedAtIsNull(ref.namespace, ref.name)
+            ?.takeIf(::isFreshPod)
             ?.let(mapper::toDomain)
     }
 
@@ -68,7 +74,7 @@ class JpaInventoryRepository(
         val matchesLabels: (Pod) -> Boolean = { pod ->
             filter.labelSelector.all { (k, v) -> pod.labels[k] == v }
         }
-        return entities.map(mapper::toDomain).filter(matchesLabels)
+        return entities.filter(::isFreshPod).map(mapper::toDomain).filter(matchesLabels)
     }
 
     override fun saveService(service: Service): SaveOutcome {
@@ -221,4 +227,9 @@ class JpaInventoryRepository(
                 error("kind ${ref.kind} not yet supported in Phase 1")
         }
     }
+
+    private fun isFreshPod(pod: PodEntity): Boolean =
+        pod.observedAt.isAfter(Instant.now().minus(POD_STALE_AFTER_MINUTES, ChronoUnit.MINUTES))
 }
+
+private const val POD_STALE_AFTER_MINUTES = 20L

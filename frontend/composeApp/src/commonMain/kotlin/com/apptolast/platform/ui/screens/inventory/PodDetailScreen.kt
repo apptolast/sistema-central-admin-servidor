@@ -51,16 +51,15 @@ import com.apptolast.platform.ui.navigation.Route
  *   - Runbooks relacionados: SOLO si `relatedRunbooks.isNotEmpty()` —
  *     regla anti-hallucination ([[feedback_rag_anti_hallucination]]).
  *
- * El cliente está hardcoded a `http://localhost:8080` por ahora. Cuando el
- * monolito esté desplegado en el cluster, vendrá inyectado o resuelto del
- * Window.location en Wasm.
+ * El cliente usa baseUrl vacío por defecto para llamadas same-origin detrás de
+ * Traefik (`https://idp.apptolast.com/api/...`).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PodDetailScreen(
     route: Route.PodDetail,
     navigator: AppNavigator,
-    client: InventoryClient = remember { InventoryClient(baseUrl = "http://localhost:8080") },
+    client: InventoryClient = remember { InventoryClient() },
 ) {
     var state by remember { mutableStateOf<PodDetailUiState>(PodDetailUiState.Loading) }
 

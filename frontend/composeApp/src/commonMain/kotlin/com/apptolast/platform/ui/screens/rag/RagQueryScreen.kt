@@ -47,13 +47,13 @@ import kotlinx.coroutines.launch
  *     mensaje canónico "No encuentro evidencia documentada" — NUNCA inventa
  *     una respuesta.
  *
- * baseUrl: por defecto `http://localhost:8082` para dev local. En producción
- * Traefik enruta /api/v1/rag/[recurso] al servicio rag-query.
+ * baseUrl: vacío por defecto para same-origin. En producción Traefik enruta
+ * /api/v1/rag/[recurso] al servicio rag-query.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RagQueryScreen(
-    client: RagClient = remember { RagClient(baseUrl = "http://localhost:8082") },
+    client: RagClient = remember { RagClient() },
 ) {
     var query by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }

@@ -1,0 +1,36 @@
+{{- if .Values.automation.kubernetesRbac.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "apptolast-platform.fullname" . }}-automation
+  labels:
+    {{- include "apptolast-platform.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "persistentvolumeclaims", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "apptolast-platform.fullname" . }}-automation
+  labels:
+    {{- include "apptolast-platform.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "apptolast-platform.fullname" . }}-automation
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "apptolast-platform.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

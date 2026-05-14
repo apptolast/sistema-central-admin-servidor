@@ -13,10 +13,12 @@ import kotlinx.serialization.json.Json
 /**
  * Cliente Ktor para la API del platform-app.
  *
- * Endpoint: /api/v1/inventory/[recurso]. URL base resuelta a runtime (dev: localhost,
- * prod: idp.apptolast.com vía Traefik IngressRoute).
+ * Endpoint: /api/v1/inventory/[recurso]. URL base vacía por defecto para
+ * llamadas same-origin vía Traefik.
  */
-class InventoryClient(private val baseUrl: String) {
+class InventoryClient(baseUrl: String = "") {
+
+    private val apiBaseUrl = baseUrl.trimEnd('/')
 
     private val client = HttpClient {
         install(ContentNegotiation) {
@@ -25,7 +27,7 @@ class InventoryClient(private val baseUrl: String) {
     }
 
     suspend fun listPods(namespace: String? = null, phase: String? = null): List<PodDto> =
-        client.get("$baseUrl/api/v1/inventory/pods") {
+        client.get("$apiBaseUrl/api/v1/inventory/pods") {
             namespace?.let { parameter("namespace", it) }
             phase?.let { parameter("phase", it) }
         }.body()
@@ -46,7 +48,7 @@ class InventoryClient(private val baseUrl: String) {
     suspend fun getPodDetail(namespace: String, name: String): PodDetailDto? {
         return try {
             val response: HttpResponse =
-                client.get("$baseUrl/api/v1/inventory/pods/$namespace/$name")
+                client.get("$apiBaseUrl/api/v1/inventory/pods/$namespace/$name")
             val status = response.status
             when {
                 status == HttpStatusCode.NotFound -> null
@@ -59,10 +61,10 @@ class InventoryClient(private val baseUrl: String) {
     }
 
     suspend fun listServices(): List<ServiceDto> =
-        client.get("$baseUrl/api/v1/inventory/services").body()
+        client.get("$apiBaseUrl/api/v1/inventory/services").body()
 
     suspend fun listExpiringCertificates(thresholdDays: Int = 30): List<CertificateDto> =
-        client.get("$baseUrl/api/v1/inventory/certificates/expiring") {
+        client.get("$apiBaseUrl/api/v1/inventory/certificates/expiring") {
             parameter("thresholdDays", thresholdDays)
         }.body()
 }

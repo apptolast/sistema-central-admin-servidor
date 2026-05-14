@@ -32,6 +32,13 @@ service:
   port: 80
   targetPort: 8082
 
+ingress:
+  enabled: true
+  host: idp.apptolast.com
+  pathPrefix: /api/v1/rag
+  priority: 1000
+  tlsSecretName: platform-apptolast-platform-tls
+
 # Postgres + pgvector. En cluster: postgres-vector.n8n.svc.cluster.local:5432
 database:
   url: "jdbc:postgresql://postgres-vector.n8n.svc.cluster.local:5432/rag"

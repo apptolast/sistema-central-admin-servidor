@@ -56,7 +56,7 @@ import com.apptolast.platform.ui.theme.AppToLastColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuditLogScreen(
-    client: AutomationClient = remember { AutomationClient(baseUrl = "http://localhost:8080") },
+    client: AutomationClient = remember { AutomationClient() },
 ) {
     var state by remember { mutableStateOf<AuditLogUiState>(AuditLogUiState.Loading) }
     var page by remember { mutableStateOf(0) }

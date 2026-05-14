@@ -70,7 +70,7 @@ import com.apptolast.platform.ui.theme.AppToLastColors
 @Composable
 fun PodDashboardScreen(
     navigator: AppNavigator,
-    client: InventoryClient = remember { InventoryClient(baseUrl = "http://localhost:8080") },
+    client: InventoryClient = remember { InventoryClient() },
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var namespaceFilter by remember { mutableStateOf<String?>(null) }
@@ -203,4 +203,3 @@ private fun PhaseBadge(phase: String) {
             .border(1.dp, Color.Black.copy(alpha = 0.2f), CircleShape),
     )
 }
-

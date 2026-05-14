@@ -73,12 +73,15 @@ postgres:
   database: apptolast_platform
   existingSecretName: platform-postgres-credentials
 
-# Service account con RBAC mínimo. El platform NO necesita acceso al apiserver
-# (de eso se encarga cluster-watcher). Solo necesita acceso a Secrets para
-# cargar credenciales (defaultmode 0400).
+# Service account con RBAC mínimo. Automation necesita lecturas Kubernetes para
+# Cronjob Board y creación de Jobs manuales cuando SafeOps dispara un CronJob.
 serviceAccount:
   create: true
   name: platform
+
+automation:
+  kubernetesRbac:
+    enabled: true
 
 # NetworkPolicy ingress: entrada pública vía Traefik y entrada interna desde
 # cluster-watcher para el endpoint `/api/v1/internal/inventory/ingest`.
@@ -115,3 +118,5 @@ affinity: {}
 # Útil para flags por entorno (override Spring profile, OIDC issuer, etc.).
 extraEnv:
   RAG_KNOWLEDGE_BASE_URL: "http://rag-query-apptolast-rag-query.platform.svc.cluster.local"
+  AUTOMATION_ALLOWED_KINDS: "kubectl-read,helm-read,trigger-cronjob"
+  AUTOMATION_ALLOWED_NAMESPACES: "cluster-ops,platform,n8n,passbolt"

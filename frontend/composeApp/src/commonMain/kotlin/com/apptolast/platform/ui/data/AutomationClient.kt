@@ -25,7 +25,9 @@ import kotlinx.serialization.json.Json
  * (página vacía, null detail, throw para run() ya que el caller necesita
  * feedback claro de si ejecutó o no).
  */
-class AutomationClient(private val baseUrl: String) {
+class AutomationClient(baseUrl: String = "") {
+
+    private val apiBaseUrl = baseUrl.trimEnd('/')
 
     private val client = HttpClient {
         install(ContentNegotiation) {
@@ -43,7 +45,7 @@ class AutomationClient(private val baseUrl: String) {
         commandKind: String? = null,
         outcome: String? = null,
     ): AuditPageDto = try {
-        client.get("$baseUrl/api/v1/automation/audit") {
+        client.get("$apiBaseUrl/api/v1/automation/audit") {
             parameter("page", page)
             parameter("size", size)
             commandKind?.let { parameter("commandKind", it) }
@@ -54,7 +56,7 @@ class AutomationClient(private val baseUrl: String) {
     }
 
     suspend fun getAuditEntry(id: String): AuditEntryDto? = try {
-        val response: HttpResponse = client.get("$baseUrl/api/v1/automation/audit/$id")
+        val response: HttpResponse = client.get("$apiBaseUrl/api/v1/automation/audit/$id")
         if (response.status.value in 200..299) response.body<AuditEntryDto>() else null
     } catch (_: Throwable) {
         null
@@ -65,8 +67,16 @@ class AutomationClient(private val baseUrl: String) {
      * excepciones porque la UI debe distinguir "no ejecutado" de "no se sabe".
      */
     suspend fun run(request: AutomationRunRequest): ExecutionOutcomeDto =
-        client.post("$baseUrl/api/v1/automation/run") {
+        client.post("$apiBaseUrl/api/v1/automation/run") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
+
+    suspend fun listCronJobs(namespace: String? = null): List<CronJobDto> = try {
+        client.get("$apiBaseUrl/api/v1/automation/cronjobs") {
+            namespace?.let { parameter("namespace", it) }
+        }.body()
+    } catch (_: Throwable) {
+        emptyList()
+    }
 }

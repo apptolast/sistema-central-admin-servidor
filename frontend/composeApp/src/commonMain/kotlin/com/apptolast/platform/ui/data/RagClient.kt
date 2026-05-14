@@ -19,7 +19,9 @@ import kotlinx.serialization.json.Json
  * con el mensaje canonical "no encuentro evidencia documentada". NUNCA
  * inventa una respuesta.
  */
-class RagClient(private val baseUrl: String) {
+class RagClient(baseUrl: String = "") {
+
+    private val apiBaseUrl = baseUrl.trimEnd('/')
 
     private val client = HttpClient {
         install(ContentNegotiation) {
@@ -30,7 +32,7 @@ class RagClient(private val baseUrl: String) {
     suspend fun ask(question: String, topK: Int = 5): RagAnswer {
         if (question.isBlank()) return RagAnswer.NoEvidence
         return try {
-            val response: RagQueryResponse = client.post("$baseUrl/api/v1/rag/query") {
+            val response: RagQueryResponse = client.post("$apiBaseUrl/api/v1/rag/query") {
                 contentType(ContentType.Application.Json)
                 setBody(RagQueryRequest(question = question, topK = topK))
             }.body()

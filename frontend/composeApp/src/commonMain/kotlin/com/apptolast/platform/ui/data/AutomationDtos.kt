@@ -32,6 +32,18 @@ data class AuditEntryDto(
     val correlationId: String? = null,
 )
 
+@Serializable
+data class CronJobDto(
+    val namespace: String,
+    val name: String,
+    val schedule: String,
+    val suspended: Boolean = false,
+    val activeJobs: Int = 0,
+    val lastScheduleTime: String? = null,
+    val lastSuccessfulTime: String? = null,
+    val status: String,
+)
+
 /**
  * Payload para POST /api/v1/automation/run. Jackson en el backend
  * dispatchea por `kind` a la sealed hierarchy SafeCommand. Sólo modelamos

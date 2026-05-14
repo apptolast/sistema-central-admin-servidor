@@ -2,7 +2,6 @@ package com.apptolast.platform.automation.api
 
 import io.fabric8.kubernetes.api.model.batch.v1.CronJob
 import io.fabric8.kubernetes.client.KubernetesClient
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/v1/automation/cronjobs")
-@ConditionalOnBean(KubernetesClient::class)
 class CronJobController(
     private val client: KubernetesClient,
 ) {

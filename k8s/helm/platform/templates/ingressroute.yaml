@@ -10,11 +10,9 @@ spec:
     - websecure
   routes:
     # Path-based routing en el MISMO Host que el frontend (idp.apptolast.com):
-    # API + actuator van al monolito; el resto (/, /assets/*, etc.) cae al
-    # frontend Wasm. Same-origin garantiza que las cookies de sesión OIDC
-    # funcionen sin CORS preflight. Traefik prioriza por longitud/complejidad
-    # de la regla — la regla con PathPrefix gana sobre la del frontend (Host only).
-    - match: Host(`{{ .Values.ingress.host }}`) && (PathPrefix(`/api`) || PathPrefix(`/actuator`) || PathPrefix(`/oauth2`) || PathPrefix(`/login`))
+    # Solo las APIs publicas del monolito salen por internet. Los endpoints
+    # /api/v1/internal/* quedan cluster-internal para cluster-watcher y jobs.
+    - match: Host(`{{ .Values.ingress.host }}`) && (PathPrefix(`/api/v1/inventory`) || PathPrefix(`/api/v1/automation`) || PathPrefix(`/actuator`) || PathPrefix(`/oauth2`) || PathPrefix(`/login`))
       kind: Rule
       services:
         - name: {{ include "apptolast-platform.fullname" . }}

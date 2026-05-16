@@ -30,17 +30,8 @@ spec:
           {{- end }}
           volumes:
             - name: workdir
-              ephemeral:
-                volumeClaimTemplate:
-                  metadata:
-                    labels:
-                      {{- include "rag-ingestor.selectorLabels" . | nindent 22 }}
-                  spec:
-                    accessModes: ["ReadWriteOnce"]
-                    storageClassName: {{ .Values.workdir.storageClassName | quote }}
-                    resources:
-                      requests:
-                        storage: {{ .Values.workdir.size | quote }}
+              emptyDir:
+                sizeLimit: {{ .Values.workdir.size | quote }}
             - name: tmp
               emptyDir:
                 sizeLimit: 256Mi

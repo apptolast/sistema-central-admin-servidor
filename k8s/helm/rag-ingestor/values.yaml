@@ -14,8 +14,8 @@ imagePullSecrets: []
 # CronJob schedule — every 15 min. Documentation drift surfaces fast.
 schedule: "*/15 * * * *"
 concurrencyPolicy: Forbid
-successfulJobsHistoryLimit: 3
-failedJobsHistoryLimit: 5
+successfulJobsHistoryLimit: 1
+failedJobsHistoryLimit: 1
 startingDeadlineSeconds: 300
 backoffLimit: 2
 activeDeadlineSeconds: 600
@@ -67,10 +67,9 @@ jvmOpts:
   maxRAMPercentage: 75
   threadCount: 50
 
-# Volumen ephemeral para clonar el repo. Se descarta al final del Job.
+# Workspace temporal para clonar el repo. Se descarta al final del Job.
 workdir:
   size: 5Gi
-  storageClassName: longhorn-single-replica
 
 serviceAccount:
   create: true
